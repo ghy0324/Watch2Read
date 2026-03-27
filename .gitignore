@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+
+# API credentials
+api_config.json
+
+# Cursor rules (project-local AI config, not shared)
+.cursor/
+
+# Intermediate files
+notes/*.srt
+notes/*.json
