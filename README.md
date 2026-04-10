@@ -7,7 +7,6 @@
 <!-- VIDEO_TABLE_START -->
 | 发布日期 | UP主 | 视频名称 | 时长 | 笔记 |
 |----------|------|----------|------|------|
-| 2026-03-31 | [自然摄影师雷雨](https://space.bilibili.com/470226708) | [适马20-200 VS 腾龙25-200 \| 超大变焦镜头的终极对决 \| 4K HDR杜比视界](https://www.bilibili.com/video/BV1SWXrBaEVr) | 15:00 | [适马20-200 VS 腾龙25-200  超大变焦镜头的终极对决  4K HDR杜比视界.md](notes/适马20-200%20VS%20腾龙25-200%20%20超大变焦镜头的终极对决%20%204K%20HDR杜比视界.md) |
 | 2026-03-26 | [KrillinAI小林](https://space.bilibili.com/242124650) | [【人物访谈】 杰弗里·辛顿毫无保留谈论人工智能的未来](https://www.bilibili.com/video/BV1GFXJBzEhf) | 1:01:11 | [【人物访谈】 杰弗里·辛顿毫无保留谈论人工智能的未来.md](notes/【人物访谈】%20杰弗里·辛顿毫无保留谈论人工智能的未来.md) |
 | 2026-03-21 | [Easonlee的AI笔记](https://space.bilibili.com/3546559488723681) | [【干货】Karpathy最新访谈：Code Agent，Auto Research和AI的自我循环时代](https://www.bilibili.com/video/BV1dwAczDEXY) | 1:06:32 | [【干货】Karpathy最新访谈.md](notes/【干货】Karpathy最新访谈.md) |
 | 2026-03-16 | [张小珺商业访谈录](https://space.bilibili.com/280780745) | [对谢赛宁的7小时马拉松访谈：世界模型、逃出硅谷、反OpenAI、AMI Labs、两次拒绝Ilya、杨立昆、李飞飞和42](https://www.bilibili.com/video/BV1tew5zVEDf) | 6:44:38 | [对谢赛宁的7小时马拉松访谈.md](notes/对谢赛宁的7小时马拉松访谈.md) |
