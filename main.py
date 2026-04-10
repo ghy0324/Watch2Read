@@ -25,7 +25,6 @@ from video_meta import fetch_video_meta
 from structure_subtitle import parse_srt_content, format_batch_for_prompt, call_model
 from segment_video import segment_video, split_entries_by_chapters
 from render_markdown import render_document
-from md2pdf import md_to_pdf
 
 OUTPUT_DIR = "notes"
 README_PATH = "README.md"
@@ -436,6 +435,8 @@ def _step5_render(
     print(f"  ✅ 已保存至: {task['md_path']}")
 
     if to_pdf:
+        from md2pdf import md_to_pdf
+
         pdf_path = md_to_pdf(task["md_path"])
         task["pdf_path"] = pdf_path
         print(f"  ✅ PDF 已生成: {pdf_path}")
