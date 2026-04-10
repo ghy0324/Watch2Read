@@ -22,12 +22,11 @@ SYSTEM_PROMPT = """\
 你是一个专业的视频内容整理助手。你的任务是将视频字幕整理成结构化的内容摘要。
 
 要求：
-1. 根据内容的主题和逻辑，将字幕内容组织为两级标题结构（level 2 和 level 3）。
-2. 每个 section 对应一个主要话题（level 2），其下可包含若干 subsection（level 3）。
-3. "content" 字段中的每一条应是一个完整的、凝练的陈述句，去除口语化用词（如"嗯""啊""就是说""对吧""那个""然后呢"等），使语句书面化、通顺。
-4. 不要过度压缩，确保没有信息量损失，所有关键观点、数据、人名、术语都要保留。
-5. start_seconds 取该 section/subsection 对应内容中最早出现的字幕时间戳（秒数，整数）。
-6. 如果字幕中存在明显的语音识别错误，请根据上下文合理修正。
+1. 根据内容的主题和逻辑，将字幕内容组织为若干 section，每个 section 对应一个细分话题。section 的划分粒度要细，每个 section 聚焦一个具体的论点、事件或讨论点，不要将多个不同话题合并到一个 section 中。
+2. "content" 字段中的每一条应是一个完整的、凝练的陈述句，去除口语化用词（如"嗯""啊""就是说""对吧""那个""然后呢"等），使语句书面化、通顺。
+3. **不要过度压缩。** 确保没有信息量损失，所有关键观点、数据、人名、术语、论证逻辑、具体案例都要保留为独立的要点。宁可多写几条要点，也不要把多个信息合并到一句话里。每分钟的字幕内容通常应产出 2-3 个要点。
+4. start_seconds 取该 section 对应内容中最早出现的字幕时间戳（秒数，整数）。
+5. 如果字幕中存在明显的语音识别错误，请根据上下文合理修正。
 
 请严格按照以下 JSON 格式输出，不要输出 JSON 之外的任何内容：
 
@@ -38,31 +37,17 @@ SYSTEM_PROMPT = """\
       "title": "主题标题",
       "tldr": "用一句话总结该 section 的核心内容",
       "start_seconds": 起始秒数,
-      "level": 2,
       "content": [
         "要点1",
         "要点2"
-      ],
-      "subsections": [
-        {
-          "title": "子主题标题",
-          "tldr": "用一句话总结该 subsection 的核心内容",
-          "start_seconds": 起始秒数,
-          "level": 3,
-          "content": [
-            "子要点1",
-            "子要点2"
-          ]
-        }
       ]
     }
   ]
 }
 
 注意：
-- subsections 是可选的，只有当一个 section 内容较多且可以进一步细分时才添加。
-- 确保每个 section 和 subsection 都有准确的 start_seconds。
-- 每个 section 和 subsection 都必须包含 tldr 字段，用一句简洁的话概括该部分的核心要点。
+- 确保每个 section 都有准确的 start_seconds。
+- 每个 section 都必须包含 tldr 字段，用一句简洁的话概括该部分的核心要点。
 - batch_title 应简明扼要地概括这一段字幕的核心主题。"""
 
 
@@ -184,6 +169,86 @@ def call_model(
     result = resp.json()
     content = result["choices"][0]["message"]["content"]
     return extract_json_from_response(content)
+
+
+DEFAULT_MAX_BATCH_MINUTES = 20  # 默认子批次上限（分钟）
+
+
+def process_chapter(
+    batch: list[dict],
+    batch_idx: int,
+    total_batches: int,
+    base_url: str,
+    api_key: str,
+    model: str,
+    chapter_title: str = "",
+    seg_source: str = "",
+    max_batch_minutes: int = DEFAULT_MAX_BATCH_MINUTES,
+) -> dict:
+    """处理单个章节：过长时用 LLM 语义切分为子批次，分别调用 LLM，合并结果。
+
+    返回与 call_model 相同格式的 dict: {batch_title, sections[]}
+    """
+    from segment_video import sub_segment_chapter, split_entries_by_chapters
+
+    max_duration = max_batch_minutes * 60
+    duration = batch[-1]["start_seconds"] - batch[0]["start_seconds"]
+
+    if duration <= max_duration:
+        # 不需要切分，直接调用
+        result = call_model(
+            batch_text=format_batch_for_prompt(batch),
+            batch_idx=batch_idx,
+            total_batches=total_batches,
+            base_url=base_url,
+            api_key=api_key,
+            model=model,
+            chapter_title=chapter_title,
+        )
+        if seg_source == "meta" and chapter_title:
+            result["batch_title"] = chapter_title
+        return result
+
+    # 用 LLM 对长章节进行语义子切分
+    print(f"    章节时长 {duration // 60}:{duration % 60:02d} 超过阈值 "
+          f"{max_batch_minutes} 分钟，进行语义子切分...", flush=True)
+    sub_chapters = sub_segment_chapter(
+        batch, max_batch_minutes, base_url, api_key, model,
+    )
+    sub_batches = split_entries_by_chapters(batch, sub_chapters)
+    print(f"    切分为 {len(sub_batches)} 个子批次", flush=True)
+
+    merged_sections: list[dict] = []
+    batch_title = chapter_title or ""
+
+    for si, sub_batch in enumerate(sub_batches):
+        t0 = sub_batch[0]["start_seconds"]
+        t1 = sub_batch[-1]["start_seconds"]
+        sub_title = sub_chapters[si]["title"] if si < len(sub_chapters) else ""
+        print(
+            f"    子批次 [{si + 1}/{len(sub_batches)}] "
+            f"{t0 // 60}:{t0 % 60:02d} ~ {t1 // 60}:{t1 % 60:02d} "
+            f"({len(sub_batch)} 条) {sub_title}",
+            flush=True,
+        )
+        sub_result = call_model(
+            batch_text=format_batch_for_prompt(sub_batch),
+            batch_idx=batch_idx,
+            total_batches=total_batches,
+            base_url=base_url,
+            api_key=api_key,
+            model=model,
+            chapter_title=chapter_title,
+        )
+        merged_sections.extend(sub_result.get("sections", []))
+        if not batch_title:
+            batch_title = sub_result.get("batch_title", "")
+
+    result = {
+        "batch_title": batch_title if not (seg_source == "meta" and chapter_title) else chapter_title,
+        "sections": merged_sections,
+    }
+    return result
 
 
 def main():

@@ -31,33 +31,12 @@ def render_content(items: list[str]) -> str:
     return "\n".join(f"- {item}" for item in items)
 
 
-def render_subsection(sub: dict, video_url: str) -> str:
-    t = sub["start_seconds"]
-    link = make_link(video_url, t)
-    title = sub["title"]
-    tldr = sub.get("tldr", "")
-    content = sub.get("content", [])
-
-    lines = [f'**<a href="{link}">{title}</a>** `{fmt_time(t)}`', ""]
-    if tldr or content:
-        summary_text = tldr if tldr else "展开详情"
-        lines.append("<details>")
-        lines.append(f"<summary>{summary_text}</summary>")
-        lines.append("")
-        if content:
-            lines.append(render_content(content))
-            lines.append("")
-        lines.append("</details>")
-    return "\n".join(lines)
-
-
 def render_section(section: dict, video_url: str) -> str:
     t = section["start_seconds"]
     link = make_link(video_url, t)
     title = section["title"]
     tldr = section.get("tldr", "")
     content = section.get("content", [])
-    subsections = section.get("subsections", [])
 
     lines = [f'### <a href="{link}">{title}</a> `{fmt_time(t)}`', ""]
     summary_text = tldr if tldr else "展开详情"
@@ -66,9 +45,6 @@ def render_section(section: dict, video_url: str) -> str:
     lines.append("")
     if content:
         lines.append(render_content(content))
-        lines.append("")
-    for sub in subsections:
-        lines.append(render_subsection(sub, video_url))
         lines.append("")
     lines.append("</details>")
     return "\n".join(lines)

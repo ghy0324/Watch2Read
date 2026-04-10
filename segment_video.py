@@ -190,6 +190,56 @@ def segment_by_subtitle(
     return extract_json_from_response(raw)["chapters"]
 
 
+SUB_SEGMENT_PROMPT = """\
+你是一个视频内容分析助手。以下字幕属于视频中的同一章节，但内容较长，需要拆分为若干子段落以便后续处理。
+
+要求：
+1. 根据内容的主题变化来划分子段落，每个子段落应对应一个相对独立的话题。
+2. 每个子段落时长大致控制在 {max_minutes} 分钟左右，但优先在主题自然切换处划分，不要强行按固定时长切断。
+3. 每个子段落需提供起始时间戳（秒数）和简短标题。
+
+请严格按照以下 JSON 格式输出，不要输出 JSON 之外的任何内容：
+
+{{
+  "chapters": [
+    {{"start_seconds": 0, "title": "子段落标题"}},
+    {{"start_seconds": 120, "title": "子段落标题"}}
+  ]
+}}
+
+注意：
+- chapters 按 start_seconds 升序排列。
+- 第一个 chapter 的 start_seconds 应等于字幕起始时间。
+- start_seconds 必须取自字幕中实际出现的时间戳。"""
+
+
+def sub_segment_chapter(
+    entries: list[dict],
+    max_batch_minutes: int,
+    base_url: str,
+    api_key: str,
+    model: str,
+) -> list[dict]:
+    """用 LLM 对长章节内部做语义子切分。返回 [{start_seconds, title}, ...]。"""
+    subtitle_text = format_batch_for_prompt(entries)
+
+    # 超长时降采样，避免超出上下文窗口
+    max_chars = 100_000
+    if len(subtitle_text) > max_chars:
+        step = max(1, int(len(subtitle_text) / max_chars) + 1)
+        subtitle_text = format_batch_for_prompt(entries[::step])
+
+    system = SUB_SEGMENT_PROMPT.format(max_minutes=max_batch_minutes)
+    user_prompt = (
+        "以下是一个章节的完整字幕，每行方括号内是时间戳（时:分:秒）。\n"
+        "请根据内容的主题变化，将其拆分为若干子段落。\n\n"
+        f"{subtitle_text}"
+    )
+
+    raw = _call_llm(system, user_prompt, base_url, api_key, model, timeout=300)
+    return extract_json_from_response(raw)["chapters"]
+
+
 def segment_video(
     entries: list[dict],
     meta: dict,

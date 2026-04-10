@@ -25,6 +25,7 @@ from video_meta import fetch_video_meta
 from structure_subtitle import parse_srt_content, format_batch_for_prompt, call_model
 from segment_video import segment_video, split_entries_by_chapters
 from render_markdown import render_document
+from md2pdf import md_to_pdf
 
 OUTPUT_DIR = "notes"
 README_PATH = "README.md"
@@ -238,18 +239,23 @@ def _step3_segment(
 
 
 def _step4_structure(
-    task: dict, base_url: str, api_key: str, model: str, workers: int
+    task: dict, base_url: str, api_key: str, model: str, workers: int,
+    max_batch_minutes: int = 20,
 ) -> None:
-    """AI 结构化整理，填充 task['results']"""
+    """AI 结构化整理，填充 task['results']
+
+    两阶段全并行：
+    1. 并行对所有超阈值章节做 LLM 语义子切分
+    2. 把所有子批次铺平，一次性并行调用 call_model
+    """
+    from segment_video import sub_segment_chapter, split_entries_by_chapters
+
     batches = task["batches"]
     chapters = task["chapters"]
     seg_source = task["seg_source"]
     label = task.get("stem", "")
-
-    print(f"  分为 {len(batches)} 个批次，并发: {workers}，模型: {model}\n")
-
+    max_duration = max_batch_minutes * 60
     max_retries = 5
-    results_map: dict[int, dict] = {}
     print_lock = Lock()
     t_global = time.time()
 
@@ -257,15 +263,75 @@ def _step4_structure(
         t0, t1 = batch[0]["start_seconds"], batch[-1]["start_seconds"]
         return f"{t0 // 60}:{t0 % 60:02d} ~ {t1 // 60}:{t1 % 60:02d}"
 
-    def _process_batch(idx: int, batch: list[dict]) -> tuple[int, dict]:
-        ch_title = chapters[idx]["title"] if idx < len(chapters) else ""
+    # ── Phase 1: 识别长章节，并行子切分 ──────────────────────────
+    long_indices = []
+    for i, batch in enumerate(batches):
+        dur = batch[-1]["start_seconds"] - batch[0]["start_seconds"]
+        if dur > max_duration:
+            long_indices.append(i)
+
+    # sub_splits[chapter_idx] = list of sub_chapters from LLM
+    sub_splits: dict[int, list[dict]] = {}
+
+    if long_indices:
+        print(f"  {len(long_indices)} 个章节超过 {max_batch_minutes} 分钟，"
+              f"并行语义子切分...\n")
+
+        def _sub_segment(idx: int) -> tuple[int, list[dict]]:
+            batch = batches[idx]
+            dur = batch[-1]["start_seconds"] - batch[0]["start_seconds"]
+            sub_chs = sub_segment_chapter(
+                batch, max_batch_minutes, base_url, api_key, model,
+            )
+            with print_lock:
+                tag = f"[{label}] " if label else ""
+                ch_title = chapters[idx]["title"] if idx < len(chapters) else ""
+                print(f"  ✂️  {tag}[{idx + 1}/{len(batches)}] "
+                      f"{ch_title} ({dur // 60}:{dur % 60:02d}) "
+                      f"→ {len(sub_chs)} 个子段", flush=True)
+            return idx, sub_chs
+
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = [pool.submit(_sub_segment, i) for i in long_indices]
+            for f in as_completed(futures):
+                idx, sub_chs = f.result()
+                sub_splits[idx] = sub_chs
+        print()
+
+    # ── Phase 2: 铺平所有工作单元 ────────────────────────────────
+    # work_units: [(chapter_idx, sub_idx, sub_batch, chapter_title)]
+    # sub_idx = -1 表示该章节未切分，是完整批次
+    work_units: list[tuple[int, int, list[dict], str]] = []
+
+    for i, batch in enumerate(batches):
+        ch_title = chapters[i]["title"] if i < len(chapters) else ""
+        if i in sub_splits:
+            sub_batches = split_entries_by_chapters(batch, sub_splits[i])
+            for si, sb in enumerate(sub_batches):
+                work_units.append((i, si, sb, ch_title))
+        else:
+            work_units.append((i, -1, batch, ch_title))
+
+    total_units = len(work_units)
+    print(f"  共 {len(batches)} 个章节，展开为 {total_units} 个工作单元，"
+          f"并发: {workers}，模型: {model}\n")
+
+    # ── Phase 3: 并行处理所有工作单元 ─────────────────────────────
+    # results_parts[chapter_idx] = list of (sub_idx, result_dict)
+    results_parts: dict[int, list[tuple[int, dict]]] = {
+        i: [] for i in range(len(batches))
+    }
+
+    def _process_unit(
+        ch_idx: int, sub_idx: int, batch: list[dict], ch_title: str
+    ) -> tuple[int, int, dict]:
         last_err = None
         for attempt in range(1, max_retries + 1):
             try:
                 t_start = time.time()
                 result = call_model(
                     batch_text=format_batch_for_prompt(batch),
-                    batch_idx=idx,
+                    batch_idx=ch_idx,
                     total_batches=len(batches),
                     base_url=base_url,
                     api_key=api_key,
@@ -278,21 +344,22 @@ def _step4_structure(
                 with print_lock:
                     tag = f"[{label}] " if label else ""
                     retry_tag = f" (retry {attempt - 1})" if attempt > 1 else ""
+                    sub_tag = f".{sub_idx + 1}" if sub_idx >= 0 else ""
                     print(
-                        f"  ✅ {tag}[{idx + 1}/{len(batches)}] "
+                        f"  ✅ {tag}[{ch_idx + 1}{sub_tag}/{len(batches)}] "
                         f"{_fmt_range(batch)} "
                         f"({elapsed:.1f}s{retry_tag}) "
                         f"{result.get('batch_title', '')}",
                         flush=True,
                     )
-                return idx, result
+                return ch_idx, sub_idx, result
             except Exception as exc:
                 last_err = exc
                 wait = min(2**attempt, 30)
                 with print_lock:
                     tag = f"[{label}] " if label else ""
                     print(
-                        f"  ⚠️  {tag}[{idx + 1}/{len(batches)}] "
+                        f"  ⚠️  {tag}[{ch_idx + 1}/{len(batches)}] "
                         f"{_fmt_range(batch)} "
                         f"第 {attempt} 次失败 ({type(exc).__name__})，"
                         f"{wait}s 后重试 ..."
@@ -303,7 +370,7 @@ def _step4_structure(
                 if attempt < max_retries:
                     time.sleep(wait)
         raise RuntimeError(
-            f"批次 {idx + 1} ({_fmt_range(batch)}) "
+            f"批次 {ch_idx + 1} ({_fmt_range(batch)}) "
             f"在 {max_retries} 次尝试后仍失败: {last_err}"
         )
 
@@ -311,14 +378,14 @@ def _step4_structure(
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {
-            pool.submit(_process_batch, i, batch): i
-            for i, batch in enumerate(batches)
+            pool.submit(_process_unit, ch_idx, sub_idx, batch, ch_title): (ch_idx, sub_idx)
+            for ch_idx, sub_idx, batch, ch_title in work_units
         }
         for future in as_completed(futures):
-            idx = futures[future]
+            ch_idx, sub_idx = futures[future]
             try:
-                _, result = future.result()
-                results_map[idx] = result
+                _, _, result = future.result()
+                results_parts[ch_idx].append((sub_idx, result))
             except Exception as exc:
                 failed.append(str(exc))
 
@@ -327,7 +394,31 @@ def _step4_structure(
             f"{len(failed)} 个批次最终失败: " + "; ".join(failed)
         )
 
-    task["results"] = [results_map[i] for i in range(len(batches))]
+    # ── Phase 4: 合并结果 ────────────────────────────────────────
+    final_results: list[dict] = []
+    for i in range(len(batches)):
+        parts = results_parts[i]
+        if len(parts) == 1 and parts[0][0] == -1:
+            # 未切分的章节，直接使用
+            final_results.append(parts[0][1])
+        else:
+            # 长章节：按 sub_idx 排序后合并 sections
+            parts.sort(key=lambda x: x[0])
+            ch_title = chapters[i]["title"] if i < len(chapters) else ""
+            merged_sections = []
+            batch_title = ch_title or ""
+            for _, part_result in parts:
+                merged_sections.extend(part_result.get("sections", []))
+                if not batch_title:
+                    batch_title = part_result.get("batch_title", "")
+            if seg_source == "meta" and ch_title:
+                batch_title = ch_title
+            final_results.append({
+                "batch_title": batch_title,
+                "sections": merged_sections,
+            })
+
+    task["results"] = final_results
     elapsed_total = time.time() - t_global
     section_count = sum(len(b.get("sections", [])) for b in task["results"])
     print(
@@ -336,11 +427,18 @@ def _step4_structure(
     )
 
 
-def _step5_render(task: dict, keep_srt: bool, keep_json: bool) -> None:
+def _step5_render(
+    task: dict, keep_srt: bool, keep_json: bool, to_pdf: bool = False
+) -> None:
     """渲染 Markdown 并保存可选中间文件"""
     md_content = render_document(task["results"], task["url"], task["meta"])
     save_file(task["md_path"], md_content)
     print(f"  ✅ 已保存至: {task['md_path']}")
+
+    if to_pdf:
+        pdf_path = md_to_pdf(task["md_path"])
+        task["pdf_path"] = pdf_path
+        print(f"  ✅ PDF 已生成: {pdf_path}")
 
     if keep_srt:
         save_file(task["srt_path"], task["srt_content"])
@@ -387,10 +485,10 @@ def process_single_video(
         _step3_segment(task, base_url, api_key, model, args.keep_segments)
 
         log_step(4, 6, "AI 结构化整理字幕")
-        _step4_structure(task, base_url, api_key, model, args.workers)
+        _step4_structure(task, base_url, api_key, model, args.workers, args.max_batch_minutes)
 
         log_step(5, 6, "渲染 Markdown 文档")
-        _step5_render(task, args.keep_srt, args.keep_json)
+        _step5_render(task, args.keep_srt, args.keep_json, args.to_pdf)
 
         log_step(6, 6, "更新 README 视频表格")
         _step6_readme(task)
@@ -472,11 +570,11 @@ def run_pipeline(
     )
     _for_each_parallel(
         4, "AI 结构化整理字幕", _step4_structure,
-        base_url, api_key, model, args.workers,
+        base_url, api_key, model, args.workers, args.max_batch_minutes,
     )
     _for_each_serial(
         5, "渲染 Markdown 文档", _step5_render,
-        args.keep_srt, args.keep_json,
+        args.keep_srt, args.keep_json, args.to_pdf,
     )
     _for_each_serial(6, "更新 README 视频表格", _step6_readme)
 
@@ -593,6 +691,14 @@ def main():
     )
     parser.add_argument(
         "--workers", type=int, default=5, help="并发线程数 (默认: 5)"
+    )
+    parser.add_argument(
+        "--max-batch-minutes", type=int, default=20,
+        help="单次 LLM 调用处理的最大时长（分钟），超过则自动切分为子批次 (默认: 20)",
+    )
+    parser.add_argument(
+        "--to-pdf", action="store_true",
+        help="渲染 Markdown 后同时转换为 PDF（默认关闭）",
     )
     args = parser.parse_args()
     run(args)
