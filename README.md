@@ -82,6 +82,14 @@ python main.py -l "https://www.bilibili.com/video/BVxxxxxxx/" -c api_config.json
 python main.py -l "https://www.bilibili.com/video/BVxxxxxxx/" -c api_config.json --workers 50
 ```
 
+### 静态网页（浏览笔记）
+
+仓库根目录的 `index.html`、`app.js`、`styles.css` 用于在浏览器中查看 `notes/` 下的 Markdown。文件名列表来自根目录的 **`notes-index.json`**（运行 `main.py` 或 `update.py` 后会自动更新；若手动增删 `notes/*.md`，请同步更新该 JSON 或再跑一次脚本）。
+
+部署 **GitHub Pages** 时请选择分支 **`/ (root)`**，不要用 `/docs`。根目录已放置 **`.nojekyll`**，避免 Jekyll 干扰。本地预览可执行：`python -m http.server`，再打开 http://127.0.0.1:8000/ 。
+
+页面默认为**浅色**，可在顶栏切换**深色**（偏好保存在浏览器 `localStorage`）。**笔记列表**与**本篇目录**均可点击标题栏展开 / 收起（状态同样会记住）。窄屏下正文在上、列表在下；目录在正文下方，便于先读文章再跳转章节。目录由 `h1`–`h4` 生成，支持滚动高亮当前节。
+
 ### 修改已有笔记
 
 如果对某个视频的笔记不满意，可以用 `update.py` 交互式地重新生成：

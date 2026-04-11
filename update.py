@@ -29,6 +29,7 @@ from main import (
     save_file,
     save_json,
     make_filename,
+    write_notes_index,
 )
 from structure_subtitle import (
     parse_srt_content,
@@ -498,6 +499,13 @@ def main():
     with open(args.config, "r", encoding="utf-8") as f:
         config = json.load(f)
 
+    try:
+        _interactive_update(config, args)
+    finally:
+        write_notes_index(args.output_dir)
+
+
+def _interactive_update(config: dict, args: argparse.Namespace) -> None:
     # 1. 扫描已有视频
     videos = find_videos(args.output_dir)
     if not videos:

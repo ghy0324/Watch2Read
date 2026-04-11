@@ -58,6 +58,22 @@ def save_json(path: str, data):
     save_file(path, json.dumps(data, ensure_ascii=False, indent=2))
 
 
+def write_notes_index(output_dir: str = OUTPUT_DIR) -> None:
+    """写入仓库根目录 notes-index.json，供根目录静态 index.html 列举 notes/*.md。"""
+    root = Path(__file__).resolve().parent
+    out = Path(output_dir)
+    names = (
+        sorted((p.name for p in out.glob("*.md")), key=str.lower)
+        if out.is_dir()
+        else []
+    )
+    index_path = root / "notes-index.json"
+    try:
+        save_json(str(index_path), {"notes": names})
+    except OSError as exc:
+        print(f"  ⚠️  写入 notes-index.json 失败: {exc}", file=sys.stderr)
+
+
 def update_readme_table(meta: dict, video_url: str, md_path: str):
     """在 README.md 视频表格中插入新记录，按发布日期从新到旧排列"""
     if not os.path.exists(README_PATH):
@@ -645,6 +661,8 @@ def run(args: argparse.Namespace):
         for u in failed_urls:
             print(f"     ❌ {u}")
     print(f"{'=' * 60}\n")
+
+    write_notes_index(args.output_dir)
 
     if failed_urls:
         sys.exit(1)

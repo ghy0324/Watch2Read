@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta id="meta-color-scheme" name="color-scheme" content="light" />
+    <meta id="meta-theme-color" name="theme-color" content="#f5f6f8" />
+    <meta name="description" content="Watch2Read — 将 B 站视频转化为结构化的 Markdown 阅读笔记" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>" />
+    <title>Watch2Read 笔记</title>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("w2r_theme");
+          if (t !== "dark" && t !== "light") t = "light";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "light");
+        }
+      })();
+    </script>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js" defer></script>
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#note-preview">跳到正文</a>
+
+    <div class="app">
+      <div id="reading-progress" class="reading-progress" aria-hidden="true"></div>
+
+      <header class="topbar">
+        <div class="topbar-left">
+          <button type="button" id="btn-sidebar-toggle" class="topbar-btn sidebar-toggle-btn" aria-label="收起/展开侧栏" title="收起/展开侧栏">
+            <svg class="sidebar-toggle-icon" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M3 12h18M3 6h18M3 18h18" />
+            </svg>
+          </button>
+          <label class="search-field" for="input-search">
+            <span class="visually-hidden">搜索笔记</span>
+            <svg class="search-icon" aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M21 21l-4.3-4.3" stroke-linecap="round" />
+            </svg>
+            <input
+              id="input-search"
+              type="search"
+              class="search-input"
+              placeholder="搜索… ( / )"
+              autocomplete="off"
+              spellcheck="false"
+              enterkeyhint="search"
+              aria-controls="notes-list"
+            />
+            <button type="button" id="btn-search-clear" class="search-clear" aria-label="清空搜索" hidden>
+              <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </label>
+        </div>
+        <div class="topbar-right">
+          <button
+            type="button"
+            id="btn-scroll-top"
+            class="topbar-btn"
+            aria-label="预览区回到顶部"
+            title="回到顶部"
+            hidden
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 19V5M5 12l7-7 7 7" />
+            </svg>
+          </button>
+          <button type="button" id="btn-refresh" class="topbar-btn" title="刷新列表">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+              <path d="M21 3v7h-7" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            id="btn-theme"
+            class="topbar-btn theme-toggle"
+            aria-pressed="false"
+            aria-label="切换主题"
+            title="浅色 / 深色"
+          >
+            <svg class="theme-icon-sun" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+            </svg>
+            <svg class="theme-icon-moon" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div id="hint" class="hint" role="status" aria-live="polite"></div>
+
+      <main class="layout">
+        <aside id="sidebar" class="sidebar" aria-label="笔记列表">
+          <div class="sidebar-head">
+            <span class="sidebar-title">笔记</span>
+            <span id="notes-count" class="badge" aria-live="polite">0</span>
+          </div>
+          <div id="search-options" class="search-options" hidden>
+            <div class="search-options-row search-options-scope" role="group" aria-label="搜索范围">
+              <span class="search-options-label">范围</span>
+              <label class="search-option-radio">
+                <input type="radio" name="search-scope" value="all" id="search-scope-all" checked />
+                <span>全部笔记</span>
+              </label>
+              <label class="search-option-radio">
+                <input type="radio" name="search-scope" value="current" id="search-scope-current" />
+                <span>当前笔记</span>
+              </label>
+            </div>
+            <div class="search-options-row search-options-targets" role="group" aria-label="搜索对象">
+              <span class="search-options-label">对象</span>
+              <label class="search-option-check">
+                <input type="checkbox" id="search-target-title" checked />
+                <span>笔记题目</span>
+              </label>
+              <label class="search-option-check">
+                <input type="checkbox" id="search-target-h1" checked />
+                <span>一级标题</span>
+              </label>
+              <label class="search-option-check">
+                <input type="checkbox" id="search-target-h2" />
+                <span>二级标题</span>
+              </label>
+              <label class="search-option-check">
+                <input type="checkbox" id="search-target-body" />
+                <span>正文</span>
+              </label>
+            </div>
+          </div>
+          <p id="filter-empty" class="filter-empty muted" hidden>没有匹配的笔记</p>
+          <ul id="notes-list" class="notes-list" aria-label="笔记文件列表" role="listbox"></ul>
+        </aside>
+
+        <section class="preview-wrap" aria-label="笔记预览">
+          <div class="preview-toolbar">
+            <h2 class="preview-heading">
+              <span class="visually-hidden">当前笔记：</span>
+              <span id="preview-title" class="preview-title-text">未选择</span>
+            </h2>
+            <div id="search-nav" class="search-nav" hidden>
+              <span id="search-nav-count" class="search-nav-count muted"></span>
+              <button type="button" id="btn-match-prev" class="search-nav-btn" aria-label="上一个匹配" title="上一个">
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 15l-6-6-6 6"/></svg>
+              </button>
+              <button type="button" id="btn-match-next" class="search-nav-btn" aria-label="下一个匹配" title="下一个">
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+            </div>
+            <div id="reading-meta" class="reading-meta" hidden>
+              <span id="reading-time" class="reading-time muted" title="预计阅读时间"></span>
+              <span id="word-count" class="word-count muted" title="字数统计"></span>
+            </div>
+          </div>
+
+          <div class="preview-body">
+            <div id="note-preview-scroll" class="note-preview-scroll">
+              <div id="note-preview" class="note-preview md-body" tabindex="-1">
+                <div class="empty-state">
+                  <svg class="empty-state-icon" aria-hidden="true" viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                    <path d="M8 7h8M8 11h6M8 15h4" />
+                  </svg>
+                  <p class="empty-state-title">选择一篇笔记开始阅读</p>
+                  <p class="empty-state-hint">从侧栏中点击笔记标题，或使用搜索快速定位</p>
+                </div>
+              </div>
+            </div>
+
+            <div id="toc-panel" class="toc-panel" hidden>
+              <div class="toc-head">
+                <span class="toc-title">目录</span>
+                <span id="toc-count" class="toc-count muted" aria-live="polite"></span>
+              </div>
+              <div class="toc-body">
+                <div id="toc-list" class="toc-list"></div>
+                <p id="toc-empty" class="toc-empty muted" hidden>本篇暂无标题</p>
+              </div>
+            </div>
+          </div>
+
+          <div id="preview-loading" class="preview-loading" hidden aria-hidden="true">
+            <span class="spinner" aria-hidden="true"></span>
+            <span>正在加载…</span>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer muted">
+        外链将在新标签页打开 · 内容由 Markdown 渲染
+      </footer>
+    </div>
+
+    <button type="button" id="btn-fab-top" class="fab fab-top" aria-label="回到顶部" hidden>
+      <svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M12 19V5M5 12l7-7 7 7" />
+      </svg>
+    </button>
+  </body>
+</html>
