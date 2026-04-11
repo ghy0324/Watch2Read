@@ -2,6 +2,7 @@
 
 const THEME_KEY = "w2r_theme";
 const SIDEBAR_KEY = "w2r_sidebar";
+const TOC_PANEL_KEY = "w2r_toc_panel";
 const LAST_NOTE_KEY = "w2r_last_note";
 const SEARCH_PREFS_KEY = "w2r_search_prefs";
 
@@ -227,13 +228,12 @@ function buildToc(previewEl, scrollEl) {
       header.innerHTML = `<svg class="toc-group-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg><span class="toc-group-text">${escapeHtml(text)}</span>`;
 
       header.addEventListener("click", (e) => {
-        const chevron = header.querySelector(".toc-group-chevron");
-        if (chevron && chevron.contains(e.target)) {
-          group.classList.toggle("is-open");
+        if (e.metaKey || e.ctrlKey || e.shiftKey) {
+          scrollHeadingIntoView(scrollEl, h);
+          history.replaceState(null, "", `#${id}`);
           return;
         }
-        scrollHeadingIntoView(scrollEl, h);
-        history.replaceState(null, "", `#${id}`);
+        group.classList.toggle("is-open");
       });
 
       const children = document.createElement("div");
@@ -353,6 +353,27 @@ function initSearchOptions() {
   };
   document.querySelectorAll('input[name="search-scope"], #search-target-title, #search-target-h1, #search-target-h2, #search-target-body').forEach((el) => {
     el.addEventListener("change", onChange);
+  });
+}
+
+function initTocPanel() {
+  const panel = document.getElementById("toc-panel");
+  const btn = document.getElementById("btn-toc-toggle");
+  if (!panel || !btn) return;
+
+  const apply = (collapsed) => {
+    panel.classList.toggle("is-collapsed", collapsed);
+    btn.setAttribute("aria-expanded", String(!collapsed));
+    btn.setAttribute("aria-label", collapsed ? "展开目录" : "折叠目录");
+  };
+
+  const pref = readPref(TOC_PANEL_KEY);
+  apply(pref !== null ? !pref : false);
+
+  btn.addEventListener("click", () => {
+    const next = !panel.classList.contains("is-collapsed");
+    apply(next);
+    try { localStorage.setItem(TOC_PANEL_KEY, next ? "0" : "1"); } catch { /* */ }
   });
 }
 
@@ -931,6 +952,7 @@ document.addEventListener("DOMContentLoaded", () => {
   applyTheme(getTheme());
   document.getElementById("btn-theme")?.addEventListener("click", toggleTheme);
   initSidebar();
+  initTocPanel();
   initSearchOptions();
   configureMarked();
 
