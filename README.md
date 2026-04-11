@@ -1,6 +1,8 @@
 # Watch2Read
 
 > 将 B 站视频转化为结构化的 Markdown 阅读笔记 —— 看视频太慢，不如读笔记。
+>
+> 在线阅读：https://ghy0324.github.io/Watch2Read/
 
 ## 已整理视频
 

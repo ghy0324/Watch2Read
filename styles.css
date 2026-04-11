@@ -264,6 +264,7 @@ html[data-theme="dark"] .search-hit-title mark {
 .search-clear:hover { color: var(--text); }
 
 .topbar-right { display: flex; gap: 0.15rem; align-items: center; flex-shrink: 0; }
+.repo-link { text-decoration: none; }
 
 .topbar-btn {
   width: 34px; height: 34px; border-radius: 7px;
