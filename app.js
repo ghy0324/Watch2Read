@@ -16,6 +16,40 @@ function escapeHtml(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+function noteUrl(name, hash = "") {
+  const u = new URL(window.location.href);
+  u.searchParams.set("note", name);
+  u.hash = hash ? `#${hash}` : "";
+  return u.toString();
+}
+
+function setHomeUrl() {
+  const u = new URL(window.location.href);
+  u.searchParams.delete("note");
+  u.hash = "";
+  history.replaceState(null, "", `${u.pathname}${u.search}${u.hash}`);
+}
+
+function setNoteUrl(name, hash = "") {
+  const u = new URL(window.location.href);
+  u.searchParams.set("note", name);
+  u.hash = hash ? `#${hash}` : "";
+  history.replaceState(null, "", `${u.pathname}${u.search}${u.hash}`);
+}
+
+function getNoteFromUrl() {
+  const raw = new URL(window.location.href).searchParams.get("note");
+  if (!raw) return null;
+  if (allNames.includes(raw)) return raw;
+  const byTitle = allNames.find((n) => displayTitle(n) === raw);
+  return byTitle || null;
+}
+
+function setShareButtonVisible(on) {
+  const btn = document.getElementById("btn-note-share");
+  if (btn) btn.hidden = !on;
+}
+
 function displayTitle(filename) {
   return filename.endsWith(".md") ? filename.slice(0, -3) : filename;
 }
@@ -153,6 +187,27 @@ function clearToc() {
   $("toc-count").textContent = "";
 }
 
+function renderHomeState() {
+  const preview = $("note-preview");
+  const sample = allNames.slice(0, 10)
+    .map((name) => `<li><a href="${escapeHtml(noteUrl(name))}">${escapeHtml(displayTitle(name))}</a></li>`)
+    .join("");
+  preview.innerHTML = `
+    <section class="home-state">
+      <h1>Watch2Read</h1>
+      <p>将 B 站视频转化为结构化的 Markdown 阅读笔记，减少观看时长成本，同时保留关键观点、论证和上下文。</p>
+      <p>从左侧列表选择任意笔记，地址栏会自动变成可分享的独立链接。</p>
+      <div class="home-state-links">
+        <a href="https://ghy0324.github.io/Watch2Read/" target="_blank" rel="noopener noreferrer">在线主页</a>
+        <a href="https://github.com/ghy0324/Watch2Read" target="_blank" rel="noopener noreferrer">GitHub 仓库</a>
+      </div>
+      <div class="home-note-list">
+        <h2>最近笔记</h2>
+        <ul>${sample}</ul>
+      </div>
+    </section>`;
+}
+
 function bindTocScrollSpy(scrollEl, previewEl) {
   const tocBody = $("toc-list").parentElement;
   const heads = () => [...previewEl.querySelectorAll("h1, h2, h3, h4")];
@@ -230,7 +285,7 @@ function buildToc(previewEl, scrollEl) {
       header.addEventListener("click", (e) => {
         if (e.metaKey || e.ctrlKey || e.shiftKey) {
           scrollHeadingIntoView(scrollEl, h);
-          history.replaceState(null, "", `#${id}`);
+          if (selected) setNoteUrl(selected, id);
           return;
         }
         group.classList.toggle("is-open");
@@ -252,7 +307,7 @@ function buildToc(previewEl, scrollEl) {
       btn.textContent = text;
       btn.addEventListener("click", () => {
         scrollHeadingIntoView(scrollEl, h);
-        history.replaceState(null, "", `#${id}`);
+        if (selected) setNoteUrl(selected, id);
       });
 
       if (currentChildren) {
@@ -754,9 +809,12 @@ function updateSearchNav() {
   countEl.textContent = `${searchMatchIndex + 1} / ${searchMatches.length}`;
 }
 
-async function openNote(name, { searchQuery, matchIndex } = {}) {
+async function openNote(name, { searchQuery, matchIndex, preserveHash = false } = {}) {
   selected = name;
   try { localStorage.setItem(LAST_NOTE_KEY, name); } catch { /* */ }
+  const hash = preserveHash && /^#w2r-toc-\d+$/.test(location.hash) ? location.hash.replace(/^#/, "") : "";
+  setNoteUrl(name, hash);
+  setShareButtonVisible(true);
 
   document.querySelectorAll(".notes-list button").forEach((b) => {
     const on = b.dataset.name === name;
@@ -829,18 +887,11 @@ function clearSelectionUi() {
   const nav = document.getElementById("search-nav");
   if (nav) nav.hidden = true;
   try { localStorage.removeItem(LAST_NOTE_KEY); } catch { /* */ }
+  setHomeUrl();
+  setShareButtonVisible(false);
   $("preview-title").textContent = "未选择";
   setTitlePlaceholder(true);
-  $("note-preview").innerHTML = `
-    <div class="empty-state">
-      <svg class="empty-state-icon" aria-hidden="true" viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-        <path d="M8 7h8M8 11h6M8 15h4"/>
-      </svg>
-      <p class="empty-state-title">选择一篇笔记开始阅读</p>
-      <p class="empty-state-hint">从侧栏中点击笔记标题，或使用搜索快速定位</p>
-    </div>`;
+  renderHomeState();
   clearToc();
   $("btn-scroll-top").hidden = true;
   updateReadingMeta(null);
@@ -867,6 +918,8 @@ async function refresh() {
       clearSelectionUi();
     } else {
       setTitlePlaceholder(true);
+      setShareButtonVisible(false);
+      renderHomeState();
     }
   } catch (e) {
     $("notes-list").innerHTML = `<li class="list-error" role="alert">${escapeHtml(String(e.message || e))}</li>`;
@@ -948,6 +1001,13 @@ function restoreLastNote() {
   } catch { /* */ }
 }
 
+function restoreNoteFromUrlOrLast() {
+  const note = getNoteFromUrl();
+  if (note) {
+    openNote(note, { preserveHash: true });
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   applyTheme(getTheme());
   document.getElementById("btn-theme")?.addEventListener("click", toggleTheme);
@@ -1022,6 +1082,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   setTitlePlaceholder(true);
+  setShareButtonVisible(false);
+  document.getElementById("btn-note-share")?.addEventListener("click", () => {
+    if (!selected) return;
+    const hash = location.hash ? location.hash.replace(/^#/, "") : "";
+    const url = noteUrl(selected, hash);
+    navigator.clipboard.writeText(url)
+      .then(() => showToast("已复制笔记链接"))
+      .catch(() => showToast("复制链接失败"));
+  });
   setupFab();
-  refresh().then(restoreLastNote);
+  refresh().then(restoreNoteFromUrlOrLast);
 });
