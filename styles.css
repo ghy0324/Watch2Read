@@ -906,13 +906,18 @@ html[data-theme="dark"] { --search-hl: rgba(126, 176, 255, 0.18); --search-hl-st
 
   .toc-panel { max-height: none; }
   .toc-panel.is-collapsed { width: 42px; }
-  .toc-panel.is-collapsed .toc-title,
   .toc-panel.is-collapsed .toc-count { display: none; }
   .toc-panel.is-collapsed .toc-head {
-    justify-content: center;
-    padding: 0.5rem 0.25rem;
+    justify-content: space-between;
+    gap: 0.2rem;
+    padding: 0.5rem 0.35rem;
   }
-  .toc-panel.is-collapsed .toc-toggle-btn { margin-left: 0; }
+  .toc-panel.is-collapsed .toc-title {
+    display: inline;
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+  .toc-panel.is-collapsed .toc-toggle-btn { margin-left: 0; flex-shrink: 0; }
 }
 
 .footer {

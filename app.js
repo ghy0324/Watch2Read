@@ -1011,6 +1011,9 @@ function restoreNoteFromUrlOrLast() {
 document.addEventListener("DOMContentLoaded", () => {
   applyTheme(getTheme());
   document.getElementById("btn-theme")?.addEventListener("click", toggleTheme);
+  document.getElementById("btn-home")?.addEventListener("click", () => {
+    clearSelectionUi();
+  });
   initSidebar();
   initTocPanel();
   initSearchOptions();

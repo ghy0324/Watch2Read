@@ -17,6 +17,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from threading import Lock
+from urllib.parse import quote
 
 import requests
 
@@ -101,7 +102,8 @@ def update_readme_table(meta: dict, video_url: str, md_path: str):
     pub_date = meta["pub_date"].split(" ")[0]
     title_escaped = meta["title"].replace("|", "\\|")
     md_basename = os.path.basename(md_path)
-    md_link = md_path.replace(" ", "%20").replace("(", "%28").replace(")", "%29")
+    note_title = os.path.splitext(md_basename)[0]
+    md_link = f"https://ghy0324.github.io/Watch2Read/?note={quote(note_title, safe='')}"
     uploader = meta["uploader"]
     uploader_url = meta.get("uploader_url", "")
     uploader_md = f"[{uploader}]({uploader_url})" if uploader_url else uploader

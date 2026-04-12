@@ -9,12 +9,12 @@
 <!-- VIDEO_TABLE_START -->
 | 发布日期 | UP主 | 视频名称 | 时长 | 笔记 |
 |----------|------|----------|------|------|
-| 2026-03-26 | [KrillinAI小林](https://space.bilibili.com/242124650) | [【人物访谈】 杰弗里·辛顿毫无保留谈论人工智能的未来](https://www.bilibili.com/video/BV1GFXJBzEhf) | 1:01:11 | [【人物访谈】 杰弗里·辛顿毫无保留谈论人工智能的未来.md](notes/【人物访谈】%20杰弗里·辛顿毫无保留谈论人工智能的未来.md) |
-| 2026-03-21 | [Easonlee的AI笔记](https://space.bilibili.com/3546559488723681) | [【干货】Karpathy最新访谈：Code Agent，Auto Research和AI的自我循环时代](https://www.bilibili.com/video/BV1dwAczDEXY) | 1:06:32 | [【干货】Karpathy最新访谈.md](notes/【干货】Karpathy最新访谈.md) |
-| 2026-03-16 | [张小珺商业访谈录](https://space.bilibili.com/280780745) | [对谢赛宁的7小时马拉松访谈：世界模型、逃出硅谷、反OpenAI、AMI Labs、两次拒绝Ilya、杨立昆、李飞飞和42](https://www.bilibili.com/video/BV1tew5zVEDf) | 6:44:38 | [对谢赛宁的7小时马拉松访谈.md](notes/对谢赛宁的7小时马拉松访谈.md) |
-| 2026-03-06 | [硅谷101](https://space.bilibili.com/508452265) | [全面解析“世界模型”：定义、路线、实践与AGI的更近一步【硅谷101】](https://www.bilibili.com/video/BV11LPWzNEkm) | 49:36 | [全面解析“世界模型”.md](notes/全面解析“世界模型”.md) |
-| 2026-02-23 | [小Lin说](https://space.bilibili.com/520819684) | [黄金白银大崩盘，谁是幕后推手？](https://www.bilibili.com/video/BV1MxfcBhEdo) | 19:36 | [黄金白银大崩盘，谁是幕后推手？.md](notes/黄金白银大崩盘，谁是幕后推手？.md) |
-| 2026-01-17 | [WhynotTV](https://space.bilibili.com/14145636) | [翁家翌：OpenAI，GPT，强化学习，Infra，后训练，天授，tuixue，开源，CMU，清华｜WhynotTV Podcast #4](https://www.bilibili.com/video/BV1darmBcE4A) | 2:02:45 | [翁家翌.md](notes/翁家翌.md) |
+| 2026-03-26 | [KrillinAI小林](https://space.bilibili.com/242124650) | [【人物访谈】 杰弗里·辛顿毫无保留谈论人工智能的未来](https://www.bilibili.com/video/BV1GFXJBzEhf) | 1:01:11 | [【人物访谈】 杰弗里·辛顿毫无保留谈论人工智能的未来.md](https://ghy0324.github.io/Watch2Read/?note=%E3%80%90%E4%BA%BA%E7%89%A9%E8%AE%BF%E8%B0%88%E3%80%91%20%E6%9D%B0%E5%BC%97%E9%87%8C%C2%B7%E8%BE%9B%E9%A1%BF%E6%AF%AB%E6%97%A0%E4%BF%9D%E7%95%99%E8%B0%88%E8%AE%BA%E4%BA%BA%E5%B7%A5%E6%99%BA%E8%83%BD%E7%9A%84%E6%9C%AA%E6%9D%A5) |
+| 2026-03-21 | [Easonlee的AI笔记](https://space.bilibili.com/3546559488723681) | [【干货】Karpathy最新访谈：Code Agent，Auto Research和AI的自我循环时代](https://www.bilibili.com/video/BV1dwAczDEXY) | 1:06:32 | [【干货】Karpathy最新访谈.md](https://ghy0324.github.io/Watch2Read/?note=%E3%80%90%E5%B9%B2%E8%B4%A7%E3%80%91Karpathy%E6%9C%80%E6%96%B0%E8%AE%BF%E8%B0%88) |
+| 2026-03-16 | [张小珺商业访谈录](https://space.bilibili.com/280780745) | [对谢赛宁的7小时马拉松访谈：世界模型、逃出硅谷、反OpenAI、AMI Labs、两次拒绝Ilya、杨立昆、李飞飞和42](https://www.bilibili.com/video/BV1tew5zVEDf) | 6:44:38 | [对谢赛宁的7小时马拉松访谈.md](https://ghy0324.github.io/Watch2Read/?note=%E5%AF%B9%E8%B0%A2%E8%B5%9B%E5%AE%81%E7%9A%847%E5%B0%8F%E6%97%B6%E9%A9%AC%E6%8B%89%E6%9D%BE%E8%AE%BF%E8%B0%88) |
+| 2026-03-06 | [硅谷101](https://space.bilibili.com/508452265) | [全面解析“世界模型”：定义、路线、实践与AGI的更近一步【硅谷101】](https://www.bilibili.com/video/BV11LPWzNEkm) | 49:36 | [全面解析“世界模型”.md](https://ghy0324.github.io/Watch2Read/?note=%E5%85%A8%E9%9D%A2%E8%A7%A3%E6%9E%90%E2%80%9C%E4%B8%96%E7%95%8C%E6%A8%A1%E5%9E%8B%E2%80%9D) |
+| 2026-02-23 | [小Lin说](https://space.bilibili.com/520819684) | [黄金白银大崩盘，谁是幕后推手？](https://www.bilibili.com/video/BV1MxfcBhEdo) | 19:36 | [黄金白银大崩盘，谁是幕后推手？.md](https://ghy0324.github.io/Watch2Read/?note=%E9%BB%84%E9%87%91%E7%99%BD%E9%93%B6%E5%A4%A7%E5%B4%A9%E7%9B%98%EF%BC%8C%E8%B0%81%E6%98%AF%E5%B9%95%E5%90%8E%E6%8E%A8%E6%89%8B%EF%BC%9F) |
+| 2026-01-17 | [WhynotTV](https://space.bilibili.com/14145636) | [翁家翌：OpenAI，GPT，强化学习，Infra，后训练，天授，tuixue，开源，CMU，清华｜WhynotTV Podcast #4](https://www.bilibili.com/video/BV1darmBcE4A) | 2:02:45 | [翁家翌.md](https://ghy0324.github.io/Watch2Read/?note=%E7%BF%81%E5%AE%B6%E7%BF%8C) |
 <!-- VIDEO_TABLE_END -->
 
 ## 动机
