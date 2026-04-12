@@ -644,8 +644,8 @@ html[data-theme="dark"] { --search-hl: rgba(126, 176, 255, 0.18); --search-hl-st
 }
 
 .toc-group-chevron {
-  width: 18px; height: 18px; flex-shrink: 0;
-  padding: 2px;
+  width: 20px; height: 20px; flex-shrink: 0;
+  padding: 3px;
   color: var(--text-secondary);
   transition: transform 0.2s var(--ease);
   cursor: pointer;
@@ -905,12 +905,12 @@ html[data-theme="dark"] { --search-hl: rgba(126, 176, 255, 0.18); --search-hl-st
   .fab { display: none; }
 
   .toc-panel { max-height: none; }
-  .toc-panel.is-collapsed { width: 42px; }
+  .toc-panel.is-collapsed { width: 68px; }
   .toc-panel.is-collapsed .toc-count { display: none; }
   .toc-panel.is-collapsed .toc-head {
     justify-content: space-between;
     gap: 0.2rem;
-    padding: 0.5rem 0.35rem;
+    padding: 0.5rem 0.4rem;
   }
   .toc-panel.is-collapsed .toc-title {
     display: inline;

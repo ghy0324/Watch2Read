@@ -85,6 +85,7 @@ let filterQuery = "";
 let removeTocSpy = null;
 let focusedIndex = -1;
 let removeProgressSpy = null;
+let viewVersion = 0;
 const contentCache = new Map();
 let contentReady = false;
 
@@ -283,12 +284,13 @@ function buildToc(previewEl, scrollEl) {
       header.innerHTML = `<svg class="toc-group-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg><span class="toc-group-text">${escapeHtml(text)}</span>`;
 
       header.addEventListener("click", (e) => {
-        if (e.metaKey || e.ctrlKey || e.shiftKey) {
-          scrollHeadingIntoView(scrollEl, h);
-          if (selected) setNoteUrl(selected, id);
+        const chevron = header.querySelector(".toc-group-chevron");
+        if (chevron && chevron.contains(e.target)) {
+          group.classList.toggle("is-open");
           return;
         }
-        group.classList.toggle("is-open");
+        scrollHeadingIntoView(scrollEl, h);
+        if (selected) setNoteUrl(selected, id);
       });
 
       const children = document.createElement("div");
@@ -810,6 +812,7 @@ function updateSearchNav() {
 }
 
 async function openNote(name, { searchQuery, matchIndex, preserveHash = false } = {}) {
+  const currentVersion = ++viewVersion;
   selected = name;
   try { localStorage.setItem(LAST_NOTE_KEY, name); } catch { /* */ }
   const hash = preserveHash && /^#w2r-toc-\d+$/.test(location.hash) ? location.hash.replace(/^#/, "") : "";
@@ -852,6 +855,7 @@ async function openNote(name, { searchQuery, matchIndex, preserveHash = false } 
       raw = await res.text();
       contentCache.set(name, raw);
     }
+    if (currentVersion !== viewVersion) return;
     configureMarked();
     if (typeof marked !== "undefined" && typeof DOMPurify !== "undefined") {
       preview.innerHTML = DOMPurify.sanitize(marked.parse(raw));
@@ -881,6 +885,7 @@ async function openNote(name, { searchQuery, matchIndex, preserveHash = false } 
 }
 
 function clearSelectionUi() {
+  viewVersion++;
   selected = null;
   searchMatches = [];
   searchMatchIndex = -1;
