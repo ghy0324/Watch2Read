@@ -711,6 +711,22 @@ html[data-theme="dark"] { --search-hl: rgba(126, 176, 255, 0.18); --search-hl-st
 .md-body h2 {
   margin: 1.1rem 0 0.45rem; font-size: 1.12rem; font-weight: 650;
   letter-spacing: -0.015em; line-height: 1.4; color: var(--md-h2);
+  display: flex; align-items: center; gap: 0.45rem;
+}
+.md-body h2 .section-group-toggle-btn {
+  margin-left: auto;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.md-body h2 .section-group-toggle-btn:hover {
+  color: var(--text);
+  background: var(--surface-hover);
 }
 
 .md-body h3 {

@@ -172,6 +172,30 @@ function stripMetaLabel(p) {
   return c;
 }
 
+function wrapMetaRangeWithDetails(label, startP, endP) {
+  const marker = document.createComment("meta-fold");
+  startP.before(marker);
+  const details = document.createElement("details");
+  details.className = "meta-desc-details";
+  const summary = document.createElement("summary");
+  summary.textContent = label;
+  const body = document.createElement("div");
+  body.className = "meta-desc-body";
+
+  let cur = startP;
+  while (cur) {
+    const next = cur.nextElementSibling;
+    if (cur === startP) body.appendChild(stripMetaLabel(cur));
+    else body.appendChild(cur);
+    if (cur === endP) break;
+    cur = next;
+  }
+
+  details.appendChild(summary);
+  details.appendChild(body);
+  marker.replaceWith(details);
+}
+
 function normalizeMetaBlock(preview) {
   const bq = preview.querySelector("blockquote");
   if (!bq) return;
@@ -192,19 +216,63 @@ function normalizeMetaBlock(preview) {
     linkP.remove();
   }
 
-  const descP = [...bq.querySelectorAll(":scope > p")].find((p) => getMetaLabel(p) === "简介");
-  if (descP) {
-    const details = document.createElement("details");
-    details.className = "meta-desc-details";
-    const summary = document.createElement("summary");
-    summary.textContent = "简介";
-    const body = document.createElement("div");
-    body.className = "meta-desc-body";
-    body.appendChild(stripMetaLabel(descP));
-    details.appendChild(summary);
-    details.appendChild(body);
-    descP.replaceWith(details);
-  }
+  const labelMap = new Map();
+  [...bq.querySelectorAll(":scope > p")].forEach((p) => {
+    const label = getMetaLabel(p);
+    if (label) labelMap.set(label, p);
+  });
+
+  const foldLabel = (label) => {
+    const startP = labelMap.get(label);
+    if (!startP || !startP.parentElement) return;
+    let endP = startP;
+    let cur = startP.nextElementSibling;
+    while (cur) {
+      if (cur.tagName === "P" && getMetaLabel(cur)) break;
+      endP = cur;
+      cur = cur.nextElementSibling;
+    }
+    wrapMetaRangeWithDetails(label, startP, endP);
+  };
+
+  foldLabel("简介");
+  foldLabel("置顶评论");
+}
+
+function attachGroupToggleButton(h2, detailsGroup) {
+  if (!detailsGroup.length || h2.querySelector(".section-group-toggle-btn")) return;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "section-group-toggle-btn";
+  const sync = () => {
+    const hasClosed = detailsGroup.some((d) => !d.open);
+    btn.textContent = hasClosed ? "展开本节" : "折叠本节";
+    btn.setAttribute("aria-label", `${btn.textContent}下方章节详情`);
+  };
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const hasClosed = detailsGroup.some((d) => !d.open);
+    detailsGroup.forEach((d) => { d.open = hasClosed; });
+    sync();
+  });
+  detailsGroup.forEach((d) => d.addEventListener("toggle", sync));
+  h2.appendChild(btn);
+  sync();
+}
+
+function addH2SectionGroupControls(preview) {
+  const h2s = [...preview.querySelectorAll("h2")];
+  h2s.forEach((h2, idx) => {
+    const nextH2 = h2s[idx + 1] || null;
+    const detailsGroup = [];
+    let cur = h2.nextElementSibling;
+    while (cur && cur !== nextH2) {
+      if (cur.tagName === "DETAILS") detailsGroup.push(cur);
+      cur = cur.nextElementSibling;
+    }
+    attachGroupToggleButton(h2, detailsGroup);
+  });
 }
 
 function setupDetailsControls(preview) {
@@ -220,7 +288,7 @@ function setupDetailsControls(preview) {
 
   const syncAllBtn = () => {
     const hasClosed = detailsList.some((d) => !d.open);
-    allBtn.textContent = hasClosed ? "展开全文" : "折叠全文";
+    allBtn.textContent = hasClosed ? "展开全部详情" : "折叠全部详情";
     allBtn.setAttribute("aria-label", allBtn.textContent);
   };
 
@@ -259,6 +327,7 @@ function setupDetailsControls(preview) {
     syncSectionBtn();
   });
 
+  addH2SectionGroupControls(preview);
   syncAllBtn();
 }
 
