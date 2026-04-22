@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 
 def fmt_time(seconds: int) -> str:
@@ -23,6 +24,12 @@ def fmt_time(seconds: int) -> str:
 
 
 def make_link(video_url: str, seconds: int) -> str:
+    parsed = urlparse(video_url)
+    host = (parsed.hostname or "").lower()
+    if "youtube.com" in host or "youtu.be" in host:
+        query = parse_qs(parsed.query)
+        query["t"] = [str(seconds)]
+        return urlunparse(parsed._replace(query=urlencode(query, doseq=True)))
     base = video_url.rstrip("/")
     return f"{base}/?t={seconds}"
 
@@ -76,7 +83,7 @@ def render_document(data: list[dict], video_url: str, meta: dict) -> str:
         "",
         f"> **UP主**: {uploader_md} | **发布日期**: {meta['pub_date']} | **时长**: {meta['duration_fmt']}",
         ">",
-        f"> **链接**: [Bilibili - {meta['bvid']}]({video_url})",
+        f"> **链接**: [{meta['bvid'] or '视频链接'}]({video_url})",
     ]
     desc = (meta.get("desc") or "").strip()
     if desc:

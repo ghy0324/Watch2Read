@@ -1,5 +1,5 @@
 """
-Watch2Read — 将 B 站视频转化为结构化 Markdown 阅读笔记
+Watch2Read — 将视频转化为结构化 Markdown 阅读笔记
 
 用法:
     python main.py -l <bilibili_video_url> -c <api_config.json>
@@ -19,9 +19,7 @@ from pathlib import Path
 from threading import Lock
 from urllib.parse import quote
 
-import requests
-
-from download_subtitle import extract_subtitle, pick_chinese_track, download_srt
+from download_subtitle import download_subtitle
 from video_meta import fetch_video_meta
 from structure_subtitle import parse_srt_content, format_batch_for_prompt, call_model
 from segment_video import segment_video, split_entries_by_chapters
@@ -59,20 +57,13 @@ def save_json(path: str, data):
     save_file(path, json.dumps(data, ensure_ascii=False, indent=2))
 
 
-def write_notes_index(output_dir: str = OUTPUT_DIR) -> None:
-    """写入仓库根目录 notes-index.json，供根目录静态 index.html 列举 notes/*.md。"""
-    root = Path(__file__).resolve().parent
-    out = Path(output_dir)
-    names = (
-        sorted((p.name for p in out.glob("*.md")), key=str.lower)
-        if out.is_dir()
-        else []
-    )
-    index_path = root / "notes-index.json"
-    try:
-        save_json(str(index_path), {"notes": names})
-    except OSError as exc:
-        print(f"  ⚠️  写入 notes-index.json 失败: {exc}", file=sys.stderr)
+def _source_logo(video_url: str) -> str:
+    u = video_url.lower()
+    if "youtube.com" in u or "youtu.be" in u:
+        return '[<img src="https://cdn.simpleicons.org/youtube/FF0000" alt="youtube" width="18"/>](https://www.youtube.com/)'
+    if "bilibili.com" in u or "b23.tv" in u:
+        return '[<img src="https://cdn.simpleicons.org/bilibili/00A1D6" alt="bilibili" width="18"/>](https://www.bilibili.com/)'
+    return "unknown"
 
 
 def update_readme_table(meta: dict, video_url: str, md_path: str):
@@ -94,8 +85,8 @@ def update_readme_table(meta: dict, video_url: str, md_path: str):
     lines = table_block.split("\n") if table_block else []
 
     header = [
-        "| 发布日期 | UP主 | 视频名称 | 时长 | 笔记 |",
-        "|----------|------|----------|------|------|",
+        "| 发布日期 | 来源 | UP主 | 视频名称 | 时长 | 笔记 |",
+        "|----------|------|------|----------|------|------|",
     ]
     data_rows = [l for l in lines[2:] if l.strip()] if len(lines) > 2 else []
 
@@ -107,17 +98,22 @@ def update_readme_table(meta: dict, video_url: str, md_path: str):
     uploader = meta["uploader"]
     uploader_url = meta.get("uploader_url", "")
     uploader_md = f"[{uploader}]({uploader_url})" if uploader_url else uploader
+    source_cell = _source_logo(video_url)
 
     new_row = (
         f"| {pub_date} "
+        f"| {source_cell} "
         f"| {uploader_md} "
         f"| [{title_escaped}]({video_url}) "
         f"| {meta['duration_fmt']} "
-        f"| [{md_basename}]({md_link}) |"
+        f"| [{note_title}]({md_link}) |"
     )
 
     bvid = meta.get("bvid", "")
-    data_rows = [r for r in data_rows if bvid not in r]
+    if bvid:
+        data_rows = [r for r in data_rows if bvid not in r]
+    else:
+        data_rows = [r for r in data_rows if video_url not in r]
     data_rows.append(new_row)
 
     def _sort_key(row: str) -> str:
@@ -142,7 +138,7 @@ def update_readme_table(meta: dict, video_url: str, md_path: str):
 # 每个 step 操作一个 task dict，成功时写入结果字段，失败时抛 RuntimeError。
 
 
-def _step1_subtitle(task: dict) -> None:
+def _step1_subtitle(task: dict, output_dir: str = OUTPUT_DIR) -> None:
     """下载或读取字幕，填充 task['srt_content'] 和 task['entries']"""
     video_url = task["url"]
     srt_file = task.get("srt_file")
@@ -153,25 +149,14 @@ def _step1_subtitle(task: dict) -> None:
             task["srt_content"] = f.read()
         print(f"  ✅ 字幕读取完成 ({len(task['srt_content']) / 1024:.1f} KB)")
     else:
-        session = requests.Session()
         print(f"  请求字幕提取: {video_url}")
-        info = extract_subtitle(session, video_url)
-
-        if info.get("status") == "解析失败":
-            raise RuntimeError("字幕解析失败，该视频可能没有字幕")
-        tracks = info.get("subtitleItemVoList", [])
-        if not tracks:
-            raise RuntimeError("未找到任何字幕轨道")
-
-        print(
-            f"  找到 {len(tracks)} 个字幕轨道: "
-            + ", ".join(t.get("langDesc", "?") for t in tracks)
+        content, srt_path = download_subtitle(
+            video_url,
+            output=None,
+            output_dir=output_dir,
         )
-        track = pick_chinese_track(tracks)
-        if not track:
-            raise RuntimeError("未找到中文字幕")
-
-        task["srt_content"] = download_srt(session, track)
+        task["srt_content"] = content
+        task["downloaded_srt_path"] = srt_path
         print(f"  ✅ 字幕下载完成 ({len(task['srt_content']) / 1024:.1f} KB)")
 
     task["entries"] = parse_srt_content(task["srt_content"])
@@ -216,6 +201,12 @@ def _step2_metadata(task: dict, output_dir: str, keep_meta: bool) -> None:
     task["segments_path"] = os.path.join(output_dir, f"{stem}.segments.json")
     task["json_path"] = os.path.join(output_dir, f"{stem}.json")
     task["md_path"] = os.path.join(output_dir, f"{stem}.md")
+
+    downloaded_srt_path = task.get("downloaded_srt_path")
+    if downloaded_srt_path and os.path.exists(downloaded_srt_path):
+        if os.path.abspath(downloaded_srt_path) != os.path.abspath(task["srt_path"]):
+            os.replace(downloaded_srt_path, task["srt_path"])
+        task["downloaded_srt_path"] = task["srt_path"]
 
     if keep_meta:
         save_json(task["meta_path"], meta)
@@ -495,7 +486,7 @@ def process_single_video(
 
     try:
         log_step(1, 6, "下载视频字幕")
-        _step1_subtitle(task)
+        _step1_subtitle(task, args.output_dir)
 
         log_step(2, 6, "获取视频元数据")
         _step2_metadata(task, args.output_dir, args.keep_meta)
@@ -578,7 +569,7 @@ def run_pipeline(
             for f in as_completed(futures):
                 f.result()
 
-    _for_each_serial(1, "下载视频字幕", _step1_subtitle)
+    _for_each_serial(1, "下载视频字幕", _step1_subtitle, args.output_dir)
     _for_each_serial(
         2, "获取视频元数据", _step2_metadata,
         args.output_dir, args.keep_meta,
@@ -606,7 +597,13 @@ def run(args: argparse.Namespace):
     if args.keep_all:
         args.keep_srt = args.keep_json = args.keep_meta = args.keep_segments = True
 
-    links = [url.split("?")[0].rstrip("/") for url in args.links]
+    def _normalize_link(url: str) -> str:
+        u = url.strip()
+        if "youtube.com/watch" in u:
+            return u.rstrip("/")
+        return u.split("?")[0].rstrip("/")
+
+    links = [_normalize_link(url) for url in args.links]
 
     with open(args.config, "r", encoding="utf-8") as f:
         config = json.load(f)
@@ -664,20 +661,18 @@ def run(args: argparse.Namespace):
             print(f"     ❌ {u}")
     print(f"{'=' * 60}\n")
 
-    write_notes_index(args.output_dir)
-
     if failed_urls:
         sys.exit(1)
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Watch2Read — 将 B 站视频转化为结构化 Markdown 阅读笔记",
+        description="Watch2Read — 将视频转化为结构化 Markdown 阅读笔记",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "-l", "--link", dest="links", nargs="+", required=True,
-        metavar="URL", help="B 站视频链接（支持多个，空格分隔）",
+        metavar="URL", help="视频链接（支持 Bilibili / YouTube，可多个）",
     )
     parser.add_argument("-c", "--config", required=True, help="API 配置文件 (JSON)")
     parser.add_argument(

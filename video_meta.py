@@ -1,5 +1,5 @@
 """
-获取 Bilibili 视频元数据
+获取视频元数据（Bilibili / YouTube）
 
 用法:
     python video_meta.py -l <bilibili_video_url>
@@ -12,8 +12,10 @@ import argparse
 import re
 import sys
 from datetime import datetime
+from urllib.parse import urlparse
 
 import requests
+from yt_dlp import YoutubeDL
 
 BILIBILI_API = "https://api.bilibili.com/x/web-interface/view"
 BILIBILI_REPLY_API = "https://api.bilibili.com/x/v2/reply"
@@ -89,7 +91,12 @@ def _extract_reply(reply: dict) -> dict:
     }
 
 
-def fetch_video_meta(url: str) -> dict:
+def _is_youtube_url(url: str) -> bool:
+    host = (urlparse(url).hostname or "").lower()
+    return host in {"www.youtube.com", "youtube.com", "youtu.be", "m.youtube.com"}
+
+
+def fetch_video_meta_bilibili(url: str) -> dict:
     """通过 B 站公开 API 获取视频元数据（含简介和置顶评论）"""
     bvid = extract_bvid(url)
     aid = extract_aid(url) if not bvid else None
@@ -128,9 +135,51 @@ def fetch_video_meta(url: str) -> dict:
     }
 
 
+def fetch_video_meta_youtube(url: str) -> dict:
+    opts = {
+        "skip_download": True,
+        "quiet": True,
+        "noprogress": True,
+        "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+    }
+    with YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+
+    uploader = info.get("uploader") or info.get("channel") or "未知"
+    uploader_url = info.get("uploader_url") or info.get("channel_url") or ""
+    duration = int(info.get("duration") or 0)
+    upload_date = info.get("upload_date") or ""
+    pub_date = (
+        f"{upload_date[0:4]}-{upload_date[4:6]}-{upload_date[6:8]} 00:00:00"
+        if len(upload_date) == 8
+        else "未知"
+    )
+
+    return {
+        "title": info.get("title", "未知"),
+        "bvid": info.get("id", ""),
+        "aid": 0,
+        "uploader": uploader,
+        "uploader_mid": "",
+        "uploader_url": uploader_url,
+        "pub_date": pub_date,
+        "duration": duration,
+        "duration_fmt": format_duration(duration),
+        "desc": info.get("description", "") or "",
+        "cover": info.get("thumbnail", "") or "",
+        "pinned_comment": None,
+    }
+
+
+def fetch_video_meta(url: str) -> dict:
+    if _is_youtube_url(url):
+        return fetch_video_meta_youtube(url)
+    return fetch_video_meta_bilibili(url)
+
+
 def main():
-    parser = argparse.ArgumentParser(description="获取 Bilibili 视频元数据")
-    parser.add_argument("-l", "--link", required=True, help="Bilibili 视频链接")
+    parser = argparse.ArgumentParser(description="获取视频元数据（Bilibili / YouTube）")
+    parser.add_argument("-l", "--link", required=True, help="视频链接（Bilibili / YouTube）")
     args = parser.parse_args()
 
     meta = fetch_video_meta(args.link)

@@ -1,20 +1,19 @@
 # Watch2Read
 
-> 将 B 站视频转化为结构化的 Markdown 阅读笔记 —— 看视频太慢，不如读笔记。
->
-> 在线阅读：https://ghy0324.github.io/Watch2Read/
+> 将 Bilibili / YouTube 视频转化为结构化的 Markdown 阅读笔记 —— 看视频太慢，不如读笔记。
 
 ## 已整理视频
 
 <!-- VIDEO_TABLE_START -->
-| 发布日期 | UP主 | 视频名称 | 时长 | 笔记 |
-|----------|------|----------|------|------|
-| 2026-03-26 | [KrillinAI小林](https://space.bilibili.com/242124650) | [【人物访谈】 杰弗里·辛顿毫无保留谈论人工智能的未来](https://www.bilibili.com/video/BV1GFXJBzEhf) | 1:01:11 | [【人物访谈】 杰弗里·辛顿毫无保留谈论人工智能的未来.md](https://ghy0324.github.io/Watch2Read/?note=%E3%80%90%E4%BA%BA%E7%89%A9%E8%AE%BF%E8%B0%88%E3%80%91%20%E6%9D%B0%E5%BC%97%E9%87%8C%C2%B7%E8%BE%9B%E9%A1%BF%E6%AF%AB%E6%97%A0%E4%BF%9D%E7%95%99%E8%B0%88%E8%AE%BA%E4%BA%BA%E5%B7%A5%E6%99%BA%E8%83%BD%E7%9A%84%E6%9C%AA%E6%9D%A5) |
-| 2026-03-21 | [Easonlee的AI笔记](https://space.bilibili.com/3546559488723681) | [【干货】Karpathy最新访谈：Code Agent，Auto Research和AI的自我循环时代](https://www.bilibili.com/video/BV1dwAczDEXY) | 1:06:32 | [【干货】Karpathy最新访谈.md](https://ghy0324.github.io/Watch2Read/?note=%E3%80%90%E5%B9%B2%E8%B4%A7%E3%80%91Karpathy%E6%9C%80%E6%96%B0%E8%AE%BF%E8%B0%88) |
-| 2026-03-16 | [张小珺商业访谈录](https://space.bilibili.com/280780745) | [对谢赛宁的7小时马拉松访谈：世界模型、逃出硅谷、反OpenAI、AMI Labs、两次拒绝Ilya、杨立昆、李飞飞和42](https://www.bilibili.com/video/BV1tew5zVEDf) | 6:44:38 | [对谢赛宁的7小时马拉松访谈.md](https://ghy0324.github.io/Watch2Read/?note=%E5%AF%B9%E8%B0%A2%E8%B5%9B%E5%AE%81%E7%9A%847%E5%B0%8F%E6%97%B6%E9%A9%AC%E6%8B%89%E6%9D%BE%E8%AE%BF%E8%B0%88) |
-| 2026-03-06 | [硅谷101](https://space.bilibili.com/508452265) | [全面解析“世界模型”：定义、路线、实践与AGI的更近一步【硅谷101】](https://www.bilibili.com/video/BV11LPWzNEkm) | 49:36 | [全面解析“世界模型”.md](https://ghy0324.github.io/Watch2Read/?note=%E5%85%A8%E9%9D%A2%E8%A7%A3%E6%9E%90%E2%80%9C%E4%B8%96%E7%95%8C%E6%A8%A1%E5%9E%8B%E2%80%9D) |
-| 2026-02-23 | [小Lin说](https://space.bilibili.com/520819684) | [黄金白银大崩盘，谁是幕后推手？](https://www.bilibili.com/video/BV1MxfcBhEdo) | 19:36 | [黄金白银大崩盘，谁是幕后推手？.md](https://ghy0324.github.io/Watch2Read/?note=%E9%BB%84%E9%87%91%E7%99%BD%E9%93%B6%E5%A4%A7%E5%B4%A9%E7%9B%98%EF%BC%8C%E8%B0%81%E6%98%AF%E5%B9%95%E5%90%8E%E6%8E%A8%E6%89%8B%EF%BC%9F) |
-| 2026-01-17 | [WhynotTV](https://space.bilibili.com/14145636) | [翁家翌：OpenAI，GPT，强化学习，Infra，后训练，天授，tuixue，开源，CMU，清华｜WhynotTV Podcast #4](https://www.bilibili.com/video/BV1darmBcE4A) | 2:02:45 | [翁家翌.md](https://ghy0324.github.io/Watch2Read/?note=%E7%BF%81%E5%AE%B6%E7%BF%8C) |
+| 发布日期 | 来源 | UP主 | 视频名称 | 时长 | 笔记 |
+|----------|------|------|----------|------|------|
+| 2026-03-31 | [<img src="https://cdn.simpleicons.org/youtube/FF0000" alt="youtube" width="18"/>](https://www.youtube.com/) | [Zhang Xiaojun Podcast](https://www.youtube.com/@xiaojunpodcast) | [Xie Chen : Data Survey — History, Landscape, Pyramid Structure, and Recipes for AI and Robotics Data](https://www.youtube.com/watch?v=KcujArdWR8w) | 2:36:50 | [Xie Chen](https://ghy0324.github.io/Watch2Read/?note=Xie%20Chen) |
+| 2026-03-26 | [<img src="https://cdn.simpleicons.org/bilibili/00A1D6" alt="bilibili" width="18"/>](https://www.bilibili.com/) | [KrillinAI小林](https://space.bilibili.com/242124650) | [【人物访谈】 杰弗里·辛顿毫无保留谈论人工智能的未来](https://www.bilibili.com/video/BV1GFXJBzEhf) | 1:01:11 | [【人物访谈】 杰弗里·辛顿毫无保留谈论人工智能的未来](https://ghy0324.github.io/Watch2Read/?note=%E3%80%90%E4%BA%BA%E7%89%A9%E8%AE%BF%E8%B0%88%E3%80%91%20%E6%9D%B0%E5%BC%97%E9%87%8C%C2%B7%E8%BE%9B%E9%A1%BF%E6%AF%AB%E6%97%A0%E4%BF%9D%E7%95%99%E8%B0%88%E8%AE%BA%E4%BA%BA%E5%B7%A5%E6%99%BA%E8%83%BD%E7%9A%84%E6%9C%AA%E6%9D%A5) |
+| 2026-03-21 | [<img src="https://cdn.simpleicons.org/bilibili/00A1D6" alt="bilibili" width="18"/>](https://www.bilibili.com/) | [Easonlee的AI笔记](https://space.bilibili.com/3546559488723681) | [【干货】Karpathy最新访谈：Code Agent，Auto Research和AI的自我循环时代](https://www.bilibili.com/video/BV1dwAczDEXY) | 1:06:32 | [【干货】Karpathy最新访谈](https://ghy0324.github.io/Watch2Read/?note=%E3%80%90%E5%B9%B2%E8%B4%A7%E3%80%91Karpathy%E6%9C%80%E6%96%B0%E8%AE%BF%E8%B0%88) |
+| 2026-03-16 | [<img src="https://cdn.simpleicons.org/bilibili/00A1D6" alt="bilibili" width="18"/>](https://www.bilibili.com/) | [张小珺商业访谈录](https://space.bilibili.com/280780745) | [对谢赛宁的7小时马拉松访谈：世界模型、逃出硅谷、反OpenAI、AMI Labs、两次拒绝Ilya、杨立昆、李飞飞和42](https://www.bilibili.com/video/BV1tew5zVEDf) | 6:44:38 | [对谢赛宁的7小时马拉松访谈](https://ghy0324.github.io/Watch2Read/?note=%E5%AF%B9%E8%B0%A2%E8%B5%9B%E5%AE%81%E7%9A%847%E5%B0%8F%E6%97%B6%E9%A9%AC%E6%8B%89%E6%9D%BE%E8%AE%BF%E8%B0%88) |
+| 2026-03-06 | [<img src="https://cdn.simpleicons.org/bilibili/00A1D6" alt="bilibili" width="18"/>](https://www.bilibili.com/) | [硅谷101](https://space.bilibili.com/508452265) | [全面解析“世界模型”：定义、路线、实践与AGI的更近一步【硅谷101】](https://www.bilibili.com/video/BV11LPWzNEkm) | 49:36 | [全面解析“世界模型”](https://ghy0324.github.io/Watch2Read/?note=%E5%85%A8%E9%9D%A2%E8%A7%A3%E6%9E%90%E2%80%9C%E4%B8%96%E7%95%8C%E6%A8%A1%E5%9E%8B%E2%80%9D) |
+| 2026-02-23 | [<img src="https://cdn.simpleicons.org/bilibili/00A1D6" alt="bilibili" width="18"/>](https://www.bilibili.com/) | [小Lin说](https://space.bilibili.com/520819684) | [黄金白银大崩盘，谁是幕后推手？](https://www.bilibili.com/video/BV1MxfcBhEdo) | 19:36 | [黄金白银大崩盘，谁是幕后推手？](https://ghy0324.github.io/Watch2Read/?note=%E9%BB%84%E9%87%91%E7%99%BD%E9%93%B6%E5%A4%A7%E5%B4%A9%E7%9B%98%EF%BC%8C%E8%B0%81%E6%98%AF%E5%B9%95%E5%90%8E%E6%8E%A8%E6%89%8B%EF%BC%9F) |
+| 2026-01-17 | [<img src="https://cdn.simpleicons.org/bilibili/00A1D6" alt="bilibili" width="18"/>](https://www.bilibili.com/) | [WhynotTV](https://space.bilibili.com/14145636) | [翁家翌：OpenAI，GPT，强化学习，Infra，后训练，天授，tuixue，开源，CMU，清华｜WhynotTV Podcast #4](https://www.bilibili.com/video/BV1darmBcE4A) | 2:02:45 | [翁家翌](https://ghy0324.github.io/Watch2Read/?note=%E7%BF%81%E5%AE%B6%E7%BF%8C) |
 <!-- VIDEO_TABLE_END -->
 
 ## 动机
@@ -37,10 +36,14 @@ Watch2Read 想解决的就是这个中间地带：**在"看完整个视频"和"�
 ### 前置条件
 
 1. Python 3.10+
-2. 安装依赖：
+2. 按需求安装依赖（按平台可选）：
 
 ```bash
+# 仅处理 Bilibili 字幕时需要
 pip install requests pycryptodome
+
+# 仅处理 YouTube 字幕时需要
+pip install yt-dlp
 ```
 
 如需使用 `--to-pdf` 生成 PDF，请额外安装：
@@ -64,6 +67,8 @@ pip install markdown weasyprint
 ```bash
 # 基本用法（单个视频）
 python main.py -l "https://www.bilibili.com/video/BVxxxxxxx/" -c api_config.json
+# 或 YouTube
+python main.py -l "https://www.youtube.com/watch?v=KcujArdWR8w" -c api_config.json
 
 # 一次处理多个视频（逐个串行）
 python main.py -l "https://www.bilibili.com/video/BV1xxx/" "https://www.bilibili.com/video/BV2yyy/" -c api_config.json
@@ -83,16 +88,6 @@ python main.py -l "https://www.bilibili.com/video/BVxxxxxxx/" -c api_config.json
 # 高并发处理（适用于 API 限流宽松的场景）
 python main.py -l "https://www.bilibili.com/video/BVxxxxxxx/" -c api_config.json --workers 50
 ```
-
-### 静态网页（浏览笔记）
-
-仓库根目录的 `index.html`、`app.js`、`styles.css` 用于在浏览器中查看 `notes/` 下的 Markdown。文件名列表来自根目录的 **`notes-index.json`**（运行 `main.py` 或 `update.py` 后会自动更新；若手动增删 `notes/*.md`，请同步更新该 JSON 或再跑一次脚本）。
-
-在线访问地址：https://ghy0324.github.io/Watch2Read/
-
-本地预览可执行：`python -m http.server`，再打开 http://127.0.0.1:8000/ 。
-
-页面默认为**浅色**，可在顶栏切换**深色**（偏好保存在浏览器 `localStorage`）。**笔记列表**与**本篇目录**均可点击标题栏展开 / 收起（状态同样会记住）。窄屏下正文在上、列表在下；目录在正文下方，便于先读文章再跳转章节。目录由 `h1`–`h4` 生成，支持滚动高亮当前节。
 
 ### 修改已有笔记
 
@@ -127,7 +122,7 @@ python update.py -c api_config.json --to-pdf
 
 | 参数 | 说明 |
 |------|------|
-| `-l, --link` | B 站视频链接，支持多个（空格分隔，必需） |
+| `-l, --link` | 视频链接，支持 Bilibili / YouTube，支持多个（空格分隔，必需） |
 | `-c, --config` | API 配置文件路径（必需） |
 | `--pipeline` | 流水线模式：多视频时按步骤统一推进，LLM 步骤跨视频并行（仅多视频时生效） |
 | `--workers` | 并发线程数（默认 5） |
@@ -181,7 +176,7 @@ Step 6 更新 README（串行）：A → B → C
 
 ## Notes
 
-- **平台支持**：目前仅支持 Bilibili 平台。字幕下载依赖视频本身附带的字幕（包括 UP 主上传的字幕和 Bilibili 平台自动生成的 AI 字幕），无字幕的视频暂时无法处理。
+- **平台支持**：支持 Bilibili 和 YouTube。字幕下载依赖视频本身附带字幕（手动字幕或自动字幕），无字幕的视频暂时无法处理。
 - **字幕准确性**：平台自动生成的 AI 字幕不可避免地存在错误，尤其是人名、机构名、专业术语等专有名词。虽然 AI 结构化阶段会尝试根据上下文修正，但仍可能有遗漏，请读者注意甄别。
 - **建议观看原片**：本工具生成的笔记旨在帮助快速了解视频内容和事后检索回顾。如果时间充裕，仍然建议观看原视频——视频中的语气、表情、演示等信息是文字无法完全传达的。每个章节标题都附有时间戳链接，方便跳转到感兴趣的片段。
 
@@ -193,7 +188,7 @@ Step 6 更新 README（串行）：A → B → C
 视频链接 → 字幕下载 → 元数据获取 → 语义分段 → AI 结构化 → Markdown 渲染
 ```
 
-1. **字幕下载**：通过第三方字幕提取服务获取视频的 SRT 格式字幕。
+1. **字幕下载**：统一脚本自动识别平台并下载 SRT 字幕：Bilibili 走 kedou.life 接口，YouTube 走 `yt-dlp`。只要存在简体中文字幕（如 `简体中文` / `zh-Hans` / `zh-CN`）就优先下载简体中文，并默认保存到 `notes/` 目录。
 2. **元数据获取**：调用 B 站公开 API 获取视频标题、UP 主、发布日期、时长、简介、置顶评论等信息。
 3. **语义分段**：优先从视频简介或置顶评论中提取已有的章节划分（通过 LLM 解析时间戳和层级结构）；若无现成划分，则将完整字幕交给 LLM 按主题变化进行语义分段。
 4. **AI 结构化整理**：按分段结果将字幕分批，每批独立送入大语言模型，输出结构化 JSON（二级标题体系 + 要点列表 + 时间戳）。
@@ -208,7 +203,7 @@ Step 6 更新 README（串行）：A → B → C
 |------|------|
 | `main.py` | 主入口，串联整个流水线，处理命令行参数，输出进度信息 |
 | `update.py` | 交互式修改已有笔记，支持完全重新生成或按章节单独重跑 |
-| `download_subtitle.py` | 字幕下载，处理加密通信、字幕轨道选择、SRT 内容获取 |
+| `download_subtitle.py` | 统一字幕下载（Bilibili / YouTube），自动识别平台并优先简体中文字幕，默认输出到 `notes/` |
 | `video_meta.py` | 视频元数据获取，BV 号提取、B 站 API 调用、数据格式化 |
 | `segment_video.py` | 语义分段，从简介/评论提取章节或通过 LLM 分析字幕进行语义分段 |
 | `structure_subtitle.py` | 字幕结构化，SRT 解析、Prompt 构造、LLM API 调用、JSON 提取 |
@@ -217,7 +212,14 @@ Step 6 更新 README（串行）：A → B → C
 
 ### 字幕下载 (`download_subtitle.py`)
 
-通过 kedou.life 的字幕提取 API 获取 B 站视频字幕。该 API 需要 RSA + AES 加密通信，模块实现了完整的密钥协商和加密流程。自动优先选择中文字幕轨道。
+该模块已合并 Bilibili 与 YouTube 两条下载链路：
+
+- 自动识别链接平台（`bilibili.com` / `youtube.com` / `youtu.be`）。
+- Bilibili：通过 kedou.life API 获取字幕（RSA + AES 加密通信）。
+- YouTube：通过 `yt-dlp` 下载字幕（仅字幕，不下载视频）。
+- 平台依赖按需导入：仅走 Bilibili 时才需要 `requests + pycryptodome`，仅走 YouTube 时才需要 `yt-dlp`。
+- 语言策略：只要有简体中文轨道，默认优先选择简体中文；否则回退到其他可用语言。
+- 默认输出路径：`notes/{视频标题}.srt`。
 
 ### 元数据获取 (`video_meta.py`)
 
