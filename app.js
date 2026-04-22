@@ -292,7 +292,7 @@ function setupDetailsControls(preview) {
 
   const syncAllBtn = () => {
     const hasClosed = detailsList.some((d) => !d.open);
-    allBtn.textContent = hasClosed ? "展开全部详情" : "折叠全部详情";
+    allBtn.textContent = hasClosed ? "展开全部" : "折叠全部";
     allBtn.setAttribute("aria-label", allBtn.textContent);
   };
 
@@ -303,33 +303,7 @@ function setupDetailsControls(preview) {
     syncAllBtn();
   };
 
-  detailsList.forEach((d) => {
-    const summary = d.querySelector(":scope > summary");
-    if (!summary || summary.querySelector(".section-toggle-btn")) {
-      d.addEventListener("toggle", syncAllBtn);
-      return;
-    }
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "section-toggle-btn";
-    const syncSectionBtn = () => {
-      btn.textContent = d.open ? "折叠" : "展开";
-      btn.setAttribute("aria-label", `${d.open ? "折叠" : "展开"}当前章节`);
-    };
-    btn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      d.open = !d.open;
-      syncSectionBtn();
-      syncAllBtn();
-    });
-    summary.appendChild(btn);
-    d.addEventListener("toggle", () => {
-      syncSectionBtn();
-      syncAllBtn();
-    });
-    syncSectionBtn();
-  });
+  detailsList.forEach((d) => d.addEventListener("toggle", syncAllBtn));
 
   addH2SectionGroupControls(preview);
   syncAllBtn();
