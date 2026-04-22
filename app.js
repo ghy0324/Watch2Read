@@ -185,8 +185,12 @@ function wrapMetaRangeWithDetails(label, startP, endP) {
   let cur = startP;
   while (cur) {
     const next = cur.nextElementSibling;
-    if (cur === startP) body.appendChild(stripMetaLabel(cur));
-    else body.appendChild(cur);
+    if (cur === startP) {
+      body.appendChild(stripMetaLabel(cur));
+      cur.remove();
+    } else {
+      body.appendChild(cur);
+    }
     if (cur === endP) break;
     cur = next;
   }
