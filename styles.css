@@ -814,6 +814,27 @@ html[data-theme="dark"] { --search-hl: rgba(126, 176, 255, 0.18); --search-hl-st
 }
 .md-body details[open] summary::before { transform: rotate(90deg); }
 .md-body details summary:hover { color: var(--text); background: var(--surface-hover); }
+.md-body details summary .section-toggle-btn {
+  margin-left: auto;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.md-body details summary .section-toggle-btn:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+.md-body .meta-desc-details {
+  margin-top: 0.2rem;
+}
+.md-body .meta-desc-details .meta-desc-body > p {
+  margin: 0.15rem 0;
+}
 
 .md-body details > ul,
 .md-body details > ol {

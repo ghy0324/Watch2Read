@@ -156,6 +156,112 @@ function addCopyButtons(container) {
   });
 }
 
+function getMetaLabel(p) {
+  const strong = p.querySelector("strong");
+  if (!strong) return "";
+  return strong.textContent.replace(/[:：]/g, "").trim();
+}
+
+function stripMetaLabel(p) {
+  const c = p.cloneNode(true);
+  const strong = c.querySelector("strong");
+  if (strong) strong.remove();
+  if (c.firstChild && c.firstChild.nodeType === Node.TEXT_NODE) {
+    c.firstChild.textContent = c.firstChild.textContent.replace(/^\s*[:：]\s*/, "");
+  }
+  return c;
+}
+
+function normalizeMetaBlock(preview) {
+  const bq = preview.querySelector("blockquote");
+  if (!bq) return;
+  const ps = [...bq.querySelectorAll(":scope > p")];
+  const hasMeta = ps.some((p) => getMetaLabel(p) === "UP主");
+  if (!hasMeta) return;
+
+  const metaP = ps.find((p) => /UP主/.test(p.textContent) && /发布日期/.test(p.textContent) && /时长/.test(p.textContent));
+  const linkP = ps.find((p) => getMetaLabel(p) === "链接");
+  if (metaP && linkP && !/链接/.test(metaP.textContent)) {
+    metaP.append(" | ");
+    const strong = document.createElement("strong");
+    strong.textContent = "链接";
+    metaP.appendChild(strong);
+    metaP.append(": ");
+    const link = linkP.querySelector("a");
+    if (link) metaP.appendChild(link.cloneNode(true));
+    linkP.remove();
+  }
+
+  const descP = [...bq.querySelectorAll(":scope > p")].find((p) => getMetaLabel(p) === "简介");
+  if (descP) {
+    const details = document.createElement("details");
+    details.className = "meta-desc-details";
+    const summary = document.createElement("summary");
+    summary.textContent = "简介";
+    const body = document.createElement("div");
+    body.className = "meta-desc-body";
+    body.appendChild(stripMetaLabel(descP));
+    details.appendChild(summary);
+    details.appendChild(body);
+    descP.replaceWith(details);
+  }
+}
+
+function setupDetailsControls(preview) {
+  const allBtn = document.getElementById("btn-toggle-all-details");
+  if (!allBtn) return;
+
+  const detailsList = [...preview.querySelectorAll("details:not(.meta-desc-details)")];
+  if (!detailsList.length) {
+    allBtn.hidden = true;
+    allBtn.onclick = null;
+    return;
+  }
+
+  const syncAllBtn = () => {
+    const hasClosed = detailsList.some((d) => !d.open);
+    allBtn.textContent = hasClosed ? "展开全文" : "折叠全文";
+    allBtn.setAttribute("aria-label", allBtn.textContent);
+  };
+
+  allBtn.hidden = false;
+  allBtn.onclick = () => {
+    const hasClosed = detailsList.some((d) => !d.open);
+    detailsList.forEach((d) => { d.open = hasClosed; });
+    syncAllBtn();
+  };
+
+  detailsList.forEach((d) => {
+    const summary = d.querySelector(":scope > summary");
+    if (!summary || summary.querySelector(".section-toggle-btn")) {
+      d.addEventListener("toggle", syncAllBtn);
+      return;
+    }
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "section-toggle-btn";
+    const syncSectionBtn = () => {
+      btn.textContent = d.open ? "折叠" : "展开";
+      btn.setAttribute("aria-label", `${d.open ? "折叠" : "展开"}当前章节`);
+    };
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      d.open = !d.open;
+      syncSectionBtn();
+      syncAllBtn();
+    });
+    summary.appendChild(btn);
+    d.addEventListener("toggle", () => {
+      syncSectionBtn();
+      syncAllBtn();
+    });
+    syncSectionBtn();
+  });
+
+  syncAllBtn();
+}
+
 let toastEl = null, toastTimer = null;
 function showToast(msg) {
   if (!toastEl) {
@@ -866,6 +972,8 @@ async function openNote(name, { searchQuery, matchIndex, preserveHash = false } 
     preview.classList.add("is-entering");
     preview.addEventListener("animationend", () => preview.classList.remove("is-entering"), { once: true });
 
+    normalizeMetaBlock(preview);
+    setupDetailsControls(preview);
     enhancePreviewLinks(preview);
     addCopyButtons(preview);
     buildToc(preview, scrollEl);
@@ -894,6 +1002,11 @@ function clearSelectionUi() {
   try { localStorage.removeItem(LAST_NOTE_KEY); } catch { /* */ }
   setHomeUrl();
   setShareButtonVisible(false);
+  const allBtn = document.getElementById("btn-toggle-all-details");
+  if (allBtn) {
+    allBtn.hidden = true;
+    allBtn.onclick = null;
+  }
   $("preview-title").textContent = "未选择";
   setTitlePlaceholder(true);
   renderHomeState();
