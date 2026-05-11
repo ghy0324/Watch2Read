@@ -15,7 +15,6 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 import requests
-from yt_dlp import YoutubeDL
 
 BILIBILI_API = "https://api.bilibili.com/x/web-interface/view"
 BILIBILI_REPLY_API = "https://api.bilibili.com/x/v2/reply"
@@ -136,6 +135,7 @@ def fetch_video_meta_bilibili(url: str) -> dict:
 
 
 def fetch_video_meta_youtube(url: str) -> dict:
+    from yt_dlp import YoutubeDL
     opts = {
         "skip_download": True,
         "quiet": True,
