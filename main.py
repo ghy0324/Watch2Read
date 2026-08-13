@@ -275,7 +275,7 @@ def _step4_structure(
     seg_source = task["seg_source"]
     label = task.get("stem", "")
     max_duration = max_batch_minutes * 60
-    max_retries = 5
+    max_retries = 10
     print_lock = Lock()
     t_global = time.time()
 
@@ -375,7 +375,7 @@ def _step4_structure(
                 return ch_idx, sub_idx, result
             except Exception as exc:
                 last_err = exc
-                wait = min(2**attempt, 30)
+                wait = 2
                 with print_lock:
                     tag = f"[{label}] " if label else ""
                     print(

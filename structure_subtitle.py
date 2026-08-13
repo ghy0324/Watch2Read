@@ -140,7 +140,7 @@ def call_model(
     api_key: str,
     model: str,
     chapter_title: str = "",
-    timeout: int = 300,
+    timeout: int = 600,
 ) -> dict:
     """调用 LLM API 对一批字幕内容进行结构化整理"""
     context = f"（主题：{chapter_title}）" if chapter_title else ""

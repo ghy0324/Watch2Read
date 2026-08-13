@@ -185,7 +185,7 @@ def segment_by_subtitle(
     )
 
     raw = _call_llm(
-        SEGMENT_SYSTEM_PROMPT, user_prompt, base_url, api_key, model, timeout=300
+        SEGMENT_SYSTEM_PROMPT, user_prompt, base_url, api_key, model, timeout=600
     )
     return extract_json_from_response(raw)["chapters"]
 
@@ -236,7 +236,7 @@ def sub_segment_chapter(
         f"{subtitle_text}"
     )
 
-    raw = _call_llm(system, user_prompt, base_url, api_key, model, timeout=300)
+    raw = _call_llm(system, user_prompt, base_url, api_key, model, timeout=600)
     return extract_json_from_response(raw)["chapters"]
 
 
