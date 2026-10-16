@@ -434,7 +434,9 @@ function buildToc(previewEl, scrollEl) {
 
   headings.forEach((h) => {
     const level = Math.min(4, Math.max(1, parseInt(h.tagName.slice(1), 10)));
-    const text = h.textContent.replace(/\s+/g, " ").trim() || "(无标题)";
+    const titleNode = h.cloneNode(true);
+    titleNode.querySelectorAll(".section-group-toggle-btn").forEach((btn) => btn.remove());
+    const text = titleNode.textContent.replace(/\s+/g, " ").trim() || "(无标题)";
     const id = h.id;
 
     if (level <= 2) {

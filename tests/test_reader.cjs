@@ -126,6 +126,32 @@ test("explicit navigation is not undone by an ongoing sidebar reflow", async () 
   assert.equal(await page.locator("#note-preview-scroll").evaluate((el) => el.scrollTop), 0);
 });
 
+test("TOC labels exclude section controls without stripping actual title text", async () => {
+  const labels = await page.locator("#toc-list .toc-group-text, #toc-list .toc-link").allTextContents();
+  assert.ok(labels.length > 0);
+  assert.ok(labels.every((text) => !/展开本节|折叠本节/.test(text)));
+
+  const control = page.locator("#note-preview .section-group-toggle-btn").first();
+  const id = await control.evaluate((el) => el.closest("h2").id);
+  const label = page.locator(`#toc-list [data-target="${id}"] .toc-group-text`);
+  const original = await label.textContent();
+  assert.equal(await control.textContent(), "展开本节");
+  await control.click();
+  assert.equal(await control.textContent(), "折叠本节");
+  assert.equal(await label.textContent(), original);
+
+  await page.evaluate((id) => {
+    const prefix = document.createElement("strong");
+    prefix.textContent = "展开本节与折叠本节：";
+    document.getElementById(id).prepend(prefix);
+    buildToc(document.getElementById("note-preview"), document.getElementById("note-preview-scroll"));
+  }, id);
+  assert.equal(await label.textContent(), "展开本节与折叠本节：" + original);
+  await control.click();
+  assert.equal(await control.textContent(), "展开本节");
+  assert.equal(await label.textContent(), "展开本节与折叠本节：" + original);
+});
+
 test("TOC resize supports dragging, keyboard, persistence and keeps reading position", async () => {
   await markHeading();
   const y = await anchorY();
