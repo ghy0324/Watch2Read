@@ -10,3 +10,5 @@ api_config.json
 # Intermediate files
 notes/*.srt
 notes/*.json
+notes/.watch2read/
+.venv/

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Watch2Read"
+  short_description: "将视频字幕整理为详细阅读笔记，保留论据、章节、时间戳和索引"
+  default_prompt: "使用 $watch2read 将这些视频整理为详细阅读笔记，保存到 notes 并更新已有 README 索引。"

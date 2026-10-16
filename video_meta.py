@@ -12,7 +12,8 @@ import argparse
 import re
 import sys
 from datetime import datetime
-from urllib.parse import urlparse
+from zoneinfo import ZoneInfo
+from urllib.parse import parse_qs, urlencode, urlparse
 
 import requests
 
@@ -95,8 +96,32 @@ def _is_youtube_url(url: str) -> bool:
     return host in {"www.youtube.com", "youtube.com", "youtu.be", "m.youtube.com"}
 
 
+def normalize_video_url(url: str) -> str:
+    """Resolve share links once and remove tracking parameters, not video IDs."""
+    url = url.strip()
+    parsed = urlparse(url)
+    if parsed.hostname == "b23.tv":
+        response = requests.get(url, headers=HEADERS, timeout=30, allow_redirects=True)
+        response.raise_for_status()
+        url = response.url
+        parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    if host in {"bilibili.com", "www.bilibili.com", "m.bilibili.com"}:
+        bvid = extract_bvid(url)
+        video_id = bvid or f"av{extract_aid(url)}"
+        return f"https://www.bilibili.com/video/{video_id}"
+    if host in {"youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"}:
+        video_id = (parsed.path.strip("/").split("/")[-1] if host == "youtu.be"
+                    or parsed.path.startswith(("/shorts/", "/live/"))
+                    else parse_qs(parsed.query).get("v", [""])[0])
+        if video_id:
+            return "https://www.youtube.com/watch?" + urlencode({"v": video_id})
+    raise ValueError(f"不支持的视频链接: {url}")
+
+
 def fetch_video_meta_bilibili(url: str) -> dict:
     """通过 B 站公开 API 获取视频元数据（含简介和置顶评论）"""
+    url = normalize_video_url(url)
     bvid = extract_bvid(url)
     aid = extract_aid(url) if not bvid else None
 
@@ -110,7 +135,7 @@ def fetch_video_meta_bilibili(url: str) -> dict:
 
     d = result["data"]
     pub_ts = d.get("pubdate", 0)
-    pub_date = datetime.fromtimestamp(pub_ts).strftime("%Y-%m-%d %H:%M:%S") if pub_ts else "未知"
+    pub_date = datetime.fromtimestamp(pub_ts, ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S") if pub_ts else "未知"
     video_aid = d.get("aid", 0)
 
     pinned = fetch_pinned_comment(video_aid) if video_aid else None

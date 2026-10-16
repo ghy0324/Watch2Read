@@ -19,14 +19,17 @@ from pathlib import Path
 from threading import Lock
 from urllib.parse import quote
 
+from requests import RequestException
+
 from download_subtitle import download_subtitle
-from video_meta import fetch_video_meta
+from video_meta import fetch_video_meta, normalize_video_url
 from structure_subtitle import parse_srt_content, format_batch_for_prompt, call_model
 from segment_video import segment_video, split_entries_by_chapters
 from render_markdown import render_document
 
 OUTPUT_DIR = "notes"
 README_PATH = "README.md"
+NOTE_BASE_URL = "https://ghy0324.github.io/Watch2Read/"
 TABLE_START = "<!-- VIDEO_TABLE_START -->"
 TABLE_END = "<!-- VIDEO_TABLE_END -->"
 
@@ -57,16 +60,18 @@ def save_json(path: str, data):
     save_file(path, json.dumps(data, ensure_ascii=False, indent=2))
 
 
-def write_notes_index(output_dir: str = OUTPUT_DIR) -> None:
-    """写入仓库根目录 notes-index.json，供静态页面列举 notes/*.md。"""
-    root = Path(__file__).resolve().parent
-    out = Path(output_dir)
+def write_notes_index(
+    output_dir: str = OUTPUT_DIR, index_path: str | None = None
+) -> None:
+    """在输出目录旁写入 notes-index.json，也可指定索引文件路径。"""
+    out = Path(output_dir).resolve()
     names = (
         sorted((p.name for p in out.glob("*.md")), key=str.lower)
         if out.is_dir()
         else []
     )
-    save_json(str(root / "notes-index.json"), {"notes": names})
+    target = Path(index_path) if index_path is not None else out.parent / "notes-index.json"
+    save_json(str(target), {"notes": names})
 
 
 def _source_logo(video_url: str) -> str:
@@ -78,36 +83,78 @@ def _source_logo(video_url: str) -> str:
     return "unknown"
 
 
-def update_readme_table(meta: dict, video_url: str, md_path: str):
-    """在 README.md 视频表格中插入新记录，按发布日期从新到旧排列"""
-    if not os.path.exists(README_PATH):
-        print("  ⚠️  README.md 不存在，跳过表格更新")
-        return
+def _table_cells(row: str) -> list[str]:
+    """解析 Markdown 表格分隔符，保留单元格内转义后的竖线。"""
+    cells, current = [], []
+    escaped = False
+    for char in row.strip():
+        if char == "|" and not escaped:
+            cells.append("".join(current).strip())
+            current = []
+        else:
+            current.append(char)
+        escaped = not escaped if char == "\\" else False
+    cells.append("".join(current).strip())
+    if cells and not cells[0]:
+        cells.pop(0)
+    if cells and not cells[-1]:
+        cells.pop()
+    return cells
 
-    with open(README_PATH, "r", encoding="utf-8") as f:
+
+def _escape_table_text(text: str) -> str:
+    return str(text).replace("\\", "\\\\").replace("|", "\\|").replace("\n", " ")
+
+
+def update_readme_table(
+    meta: dict,
+    video_url: str,
+    md_path: str,
+    processing_method: str = "api",
+    readme_path: str | None = None,
+    note_base_url: str | None = NOTE_BASE_URL,
+) -> bool:
+    """更新带标记的 README 表格；note_base_url=None 时使用相对 Markdown 链接。"""
+    if processing_method not in {"api", "skill"}:
+        raise ValueError("processing_method 必须是 api 或 skill")
+    readme = Path(readme_path if readme_path is not None else README_PATH)
+    if not readme.is_file():
+        print(f"  ⚠️  {readme} 不存在，跳过表格更新")
+        return False
+
+    with open(readme, "r", encoding="utf-8") as f:
         content = f.read()
 
     start_idx = content.find(TABLE_START)
     end_idx = content.find(TABLE_END)
-    if start_idx == -1 or end_idx == -1:
-        print("  ⚠️  README.md 中未找到表格标记，跳过更新")
-        return
+    if start_idx == -1 or end_idx <= start_idx:
+        print(f"  ⚠️  {readme} 中未找到有效表格标记，跳过更新")
+        return False
 
     table_block = content[start_idx + len(TABLE_START) : end_idx].strip()
     lines = table_block.split("\n") if table_block else []
 
     header = [
-        "| 发布日期 | 来源 | UP主 | 视频名称 | 时长 | 笔记 |",
-        "|----------|------|------|----------|------|------|",
+        "| 发布日期 | 来源 | UP主 | 视频名称 | 时长 | 笔记 | 处理方式 |",
+        "|----------|------|------|----------|------|------|----------|",
     ]
     data_rows = [l for l in lines[2:] if l.strip()] if len(lines) > 2 else []
+    for index, row in enumerate(data_rows):
+        cells = _table_cells(row)
+        if len(cells) == 6:
+            data_rows[index] = "| " + " | ".join(cells + ["api"]) + " |"
 
     pub_date = meta["pub_date"].split(" ")[0]
-    title_escaped = meta["title"].replace("|", "\\|")
+    title_escaped = _escape_table_text(meta["title"])
     md_basename = os.path.basename(md_path)
     note_title = os.path.splitext(md_basename)[0]
-    md_link = f"https://ghy0324.github.io/Watch2Read/?note={quote(note_title, safe='')}"
-    uploader = meta["uploader"]
+    if note_base_url is None:
+        relative_path = os.path.relpath(Path(md_path).resolve(), readme.resolve().parent)
+        md_link = quote(Path(relative_path).as_posix(), safe="/")
+    else:
+        separator = "&" if "?" in note_base_url else "?"
+        md_link = f"{note_base_url}{separator}note={quote(note_title, safe='')}"
+    uploader = _escape_table_text(meta["uploader"])
     uploader_url = meta.get("uploader_url", "")
     uploader_md = f"[{uploader}]({uploader_url})" if uploader_url else uploader
     source_cell = _source_logo(video_url)
@@ -118,14 +165,15 @@ def update_readme_table(meta: dict, video_url: str, md_path: str):
         f"| {uploader_md} "
         f"| [{title_escaped}]({video_url}) "
         f"| {meta['duration_fmt']} "
-        f"| [{note_title}]({md_link}) |"
+        f"| [{_escape_table_text(note_title)}]({md_link}) "
+        f"| {processing_method} |"
     )
 
     bvid = meta.get("bvid", "")
-    if bvid:
-        data_rows = [r for r in data_rows if bvid not in r]
-    else:
-        data_rows = [r for r in data_rows if video_url not in r]
+    data_rows = [
+        row for row in data_rows
+        if video_url not in row and not (bvid and bvid in row)
+    ]
     data_rows.append(new_row)
 
     def _sort_key(row: str) -> str:
@@ -142,8 +190,9 @@ def update_readme_table(meta: dict, video_url: str, md_path: str):
         + "\n"
         + content[end_idx:]
     )
-    with open(README_PATH, "w", encoding="utf-8") as f:
+    with open(readme, "w", encoding="utf-8") as f:
         f.write(new_content)
+    return True
 
 
 # ── Step 函数 ─────────────────────────────────────────────────────
@@ -472,8 +521,14 @@ def _step5_render(
 
 def _step6_readme(task: dict) -> None:
     """更新 README 视频表格"""
-    update_readme_table(task["meta"], task["url"], task["md_path"])
-    print("  ✅ README.md 已更新")
+    updated = update_readme_table(
+        task["meta"], task["url"], task["md_path"],
+        processing_method=task.get("processing_method", "api"),
+        readme_path=task.get("readme_path"),
+        note_base_url=task.get("note_base_url", NOTE_BASE_URL),
+    )
+    if updated:
+        print(f"  ✅ {task.get('readme_path') or README_PATH} 已更新")
 
 
 # ── 执行模式 ──────────────────────────────────────────────────────
@@ -609,19 +664,19 @@ def run(args: argparse.Namespace):
     if args.keep_all:
         args.keep_srt = args.keep_json = args.keep_meta = args.keep_segments = True
 
-    def _normalize_link(url: str) -> str:
-        u = url.strip()
-        if "youtube.com/watch" in u:
-            return u.rstrip("/")
-        return u.split("?")[0].rstrip("/")
-
-    links = [_normalize_link(url) for url in args.links]
+    links, failed_urls = [], []
+    for url in args.links:
+        try:
+            links.append(normalize_video_url(url))
+        except (ValueError, RequestException) as exc:
+            failed_urls.append(url)
+            print(f"  ❌ 无法解析视频链接 {url}: {exc}")
 
     with open(args.config, "r", encoding="utf-8") as f:
         config = json.load(f)
 
-    total_videos = len(links)
-    use_pipeline = args.pipeline and total_videos > 1
+    total_videos = len(args.links)
+    use_pipeline = args.pipeline and len(links) > 1
 
     if total_videos > 1:
         if args.srt:
@@ -630,13 +685,13 @@ def run(args: argparse.Namespace):
             print("  ⚠️  多视频模式下 --name 参数被忽略", file=sys.stderr)
 
     if use_pipeline:
-        succeeded, failed_urls = run_pipeline(links, config, args)
+        succeeded, processing_failures = run_pipeline(links, config, args)
+        failed_urls.extend(processing_failures)
     else:
         srt_file = args.srt if total_videos == 1 else None
         name_override = args.name if total_videos == 1 else None
 
         succeeded: list[str] = []
-        failed_urls: list[str] = []
 
         for vi, video_url in enumerate(links):
             if total_videos > 1:
@@ -693,20 +748,24 @@ def main():
         help="流水线模式：所有视频按步骤统一推进，LLM 步骤并行（仅多视频时生效）",
     )
     parser.add_argument(
-        "--keep-srt", action="store_true", help="保留中间 SRT 字幕文件"
+        "--keep-srt", action="store_true", default=True,
+        help="保留 SRT 字幕文件（默认保留；兼容旧命令）",
     )
     parser.add_argument(
-        "--keep-json", action="store_true", help="保留中间 JSON 结构化文件"
+        "--keep-json", action="store_true", default=True,
+        help="保留 JSON 结构化文件（默认保留；兼容旧命令）",
     )
     parser.add_argument(
-        "--keep-meta", action="store_true", help="保留视频元数据 JSON 文件"
+        "--keep-meta", action="store_true", default=True,
+        help="保留视频元数据 JSON 文件（默认保留；兼容旧命令）",
     )
     parser.add_argument(
-        "--keep-segments", action="store_true", help="保留分段结果 JSON 文件"
+        "--keep-segments", action="store_true", default=True,
+        help="保留分段结果 JSON 文件（默认保留；兼容旧命令）",
     )
     parser.add_argument(
         "--keep-all", action="store_true",
-        help="保留所有中间过程文件（等同于同时指定所有 --keep-* 参数）",
+        help="保留所有中间过程文件（已为默认行为；兼容旧命令）",
     )
     parser.add_argument(
         "--name", default=None, help="输出文件名（不含扩展名），仅单视频时有效"

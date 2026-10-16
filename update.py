@@ -16,6 +16,7 @@ import re
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from urllib.parse import urlparse
 
 from main import (
     OUTPUT_DIR,
@@ -66,7 +67,7 @@ def find_videos(output_dir: str) -> list[dict]:
 
 
 def _extract_video_url(md_path: Path) -> str | None:
-    """从 Markdown 文件头部提取 Bilibili 视频链接"""
+    """从共用渲染器的链接行读取视频地址，不把 UP 主主页当作视频。"""
     try:
         with open(md_path, "r", encoding="utf-8") as f:
             # 只读前 10 行
@@ -74,9 +75,14 @@ def _extract_video_url(md_path: Path) -> str | None:
                 line = f.readline()
                 if not line:
                     break
-                m = re.search(r"\(https://www\.bilibili\.com/video/(BV\w+)\)", line)
+                m = re.search(r"\*\*链接\*\*:\s*\[[^\]]*\]\((https?://[^\s)]+)\)", line)
                 if m:
-                    return f"https://www.bilibili.com/video/{m.group(1)}"
+                    url = m.group(1)
+                    if (urlparse(url).hostname or "").lower() in {
+                        "www.bilibili.com", "bilibili.com", "m.bilibili.com", "b23.tv",
+                        "www.youtube.com", "youtube.com", "m.youtube.com", "youtu.be",
+                    }:
+                        return url
     except OSError:
         pass
     return None
@@ -141,6 +147,7 @@ def rebuild_task(video: dict, cached: dict, output_dir: str) -> dict:
     stem = video["stem"]
     task = {
         "url": video["video_url"],
+        "processing_method": "api",
         "srt_file": None,
         "name_override": stem,
         "stem": stem,
@@ -233,6 +240,7 @@ def _save_and_render(task: dict) -> None:
         pdf_path = md_to_pdf(task["md_path"])
         task["pdf_path"] = pdf_path
         print(f"  已更新: {pdf_path}")
+    _step6_readme(task)
 
 
 def redo_batch(task: dict, config: dict, output_dir: str, batch_idx: int, max_batch_minutes: int = 20) -> None:

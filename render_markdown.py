@@ -89,17 +89,17 @@ def render_document(data: list[dict], video_url: str, meta: dict) -> str:
     if desc:
         desc_parts = desc.split("\n")
         lines.append(">")
-        lines.append(f"> **简介**: {desc_parts[0]}")
+        lines.append(f"> **简介**: {desc_parts[0]}".rstrip())
         for dp in desc_parts[1:]:
-            lines.append(f"> {dp}")
+            lines.append(f"> {dp}".rstrip())
 
     pinned = meta.get("pinned_comment")
     if pinned:
         comment_parts = pinned["content"].split("\n")
         lines.append(">")
-        lines.append(f"> **置顶评论** (@{pinned['user']}): {comment_parts[0]}")
+        lines.append(f"> **置顶评论** (@{pinned['user']}): {comment_parts[0]}".rstrip())
         for cp in comment_parts[1:]:
-            lines.append(f"> {cp}")
+            lines.append(f"> {cp}".rstrip())
 
     lines.extend(["", "---", "", render_all(data, video_url)])
     return "\n".join(lines)
