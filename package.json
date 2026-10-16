@@ -1,0 +1,12 @@
+{
+  "name": "watch2read-reader",
+  "private": true,
+  "scripts": {
+    "test:web": "node --test tests/test_note_groups.cjs tests/test_reader.cjs"
+  },
+  "devDependencies": {
+    "dompurify": "3.4.17",
+    "marked": "17.0.5",
+    "playwright": "1.62.1"
+  }
+}

@@ -1,10 +1,11 @@
-/* global marked, DOMPurify */
+/* global marked, DOMPurify, NoteGrouping, Watch2ReadPosition */
 
 const THEME_KEY = "w2r_theme";
 const SIDEBAR_KEY = "w2r_sidebar";
 const TOC_PANEL_KEY = "w2r_toc_panel";
 const LAST_NOTE_KEY = "w2r_last_note";
 const SEARCH_PREFS_KEY = "w2r_search_prefs";
+const NOTE_GROUP_PREFS_KEY = "w2r_note_groups";
 
 function $(id) {
   const el = document.getElementById(id);
@@ -86,8 +87,10 @@ let removeTocSpy = null;
 let focusedIndex = -1;
 let removeProgressSpy = null;
 let viewVersion = 0;
+let readingPosition = null;
 const contentCache = new Map();
 let contentReady = false;
+let noteGroupPrefs = NoteGrouping.normalizePrefs(null);
 
 function isMobile() { return window.matchMedia("(max-width: 768px)").matches; }
 
@@ -106,12 +109,19 @@ function initSidebar() {
   const btn = $("btn-sidebar-toggle");
   const pref = readPref(SIDEBAR_KEY);
   const collapsed = pref !== null ? !pref : isMobile();
+  const mobile = window.matchMedia("(max-width: 768px)");
+  let desktopCollapsed = pref !== null ? !pref : false;
   el.classList.toggle("is-collapsed", collapsed);
 
   btn.addEventListener("click", () => {
     const next = !el.classList.contains("is-collapsed");
     el.classList.toggle("is-collapsed", next);
+    if (!mobile.matches) desktopCollapsed = next;
     try { localStorage.setItem(SIDEBAR_KEY, next ? "0" : "1"); } catch { /* */ }
+  });
+  mobile.addEventListener("change", () => {
+    // Native zoom can enter the stacked layout; keep space for the article.
+    el.classList.toggle("is-collapsed", mobile.matches ? !!selected : desktopCollapsed);
   });
 }
 
@@ -327,6 +337,7 @@ function showToast(msg) {
 
 function scrollHeadingIntoView(container, el) {
   if (!el || !container || !container.contains(el)) return;
+  readingPosition?.navigate();
   const cRect = container.getBoundingClientRect();
   const eRect = el.getBoundingClientRect();
   const delta = eRect.top - cRect.top + container.scrollTop - 12;
@@ -508,7 +519,89 @@ async function preloadContents() {
     );
   await Promise.all(pending);
   contentReady = true;
-  if (filterQuery) renderList();
+  renderList();
+}
+
+function initNoteGrouping() {
+  try {
+    noteGroupPrefs = NoteGrouping.normalizePrefs(JSON.parse(localStorage.getItem(NOTE_GROUP_PREFS_KEY)));
+  } catch { /* Use the default grouping when preferences are unavailable. */ }
+  const select = $("notes-group-mode");
+  select.value = noteGroupPrefs.mode;
+  select.addEventListener("change", () => {
+    noteGroupPrefs.mode = select.value;
+    saveNoteGroupPrefs();
+    renderList();
+  });
+}
+
+function saveNoteGroupPrefs() {
+  try { localStorage.setItem(NOTE_GROUP_PREFS_KEY, JSON.stringify(noteGroupPrefs)); } catch { /* */ }
+}
+
+function appendNoteButton(list, name) {
+  const li = document.createElement("li");
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.dataset.name = name;
+  if (selected === name) { btn.setAttribute("aria-current", "true"); btn.classList.add("active"); }
+
+  const main = document.createElement("span");
+  main.className = "note-title-main";
+  main.textContent = displayTitle(name);
+  btn.appendChild(main);
+  btn.addEventListener("click", () => openNote(name));
+  li.appendChild(btn);
+  list.appendChild(li);
+}
+
+function renderNoteGroups(list) {
+  const mode = noteGroupPrefs.mode;
+  const metadata = new Map(allNames.map((name) => [name, NoteGrouping.parseMetadata(contentCache.get(name))]));
+  const groups = NoteGrouping.groupNotes(allNames, metadata, mode);
+  if (mode === "none") {
+    allNames.forEach((name) => appendNoteButton(list, name));
+    return;
+  }
+  groups.forEach((group) => {
+    const li = document.createElement("li");
+    const details = document.createElement("details");
+    details.className = "note-group";
+    details.open = !noteGroupPrefs.collapsed[mode].includes(group.key);
+    const summary = document.createElement("summary");
+    summary.className = "note-group-toggle";
+    const label = document.createElement("span");
+    label.className = "note-group-label";
+    label.textContent = group.label;
+    const count = document.createElement("span");
+    count.className = "note-group-count";
+    count.textContent = String(group.names.length);
+    count.setAttribute("aria-label", `${group.names.length} 篇笔记`);
+    summary.append(label, count);
+    const children = document.createElement("ul");
+    children.className = "note-group-items";
+    group.names.forEach((name) => appendNoteButton(children, name));
+    details.append(summary, children);
+    const persistCollapsed = () => {
+      if (!details.isConnected || noteGroupPrefs.collapsed[mode].includes(group.key) === !details.open) return;
+      const collapsed = new Set(noteGroupPrefs.collapsed[mode]);
+      if (details.open) collapsed.delete(group.key);
+      else collapsed.add(group.key);
+      noteGroupPrefs.collapsed[mode] = [...collapsed];
+      saveNoteGroupPrefs();
+      focusedIndex = -1;
+      list.querySelectorAll(".is-focused").forEach((button) => button.classList.remove("is-focused"));
+    };
+    summary.addEventListener("click", (event) => {
+      event.preventDefault();
+      details.open = !details.open;
+      // The native toggle event is queued and can lose preferences on an immediate reload.
+      persistCollapsed();
+    });
+    details.addEventListener("toggle", persistCollapsed);
+    li.appendChild(details);
+    list.appendChild(li);
+  });
 }
 
 function getSearchPrefs() {
@@ -566,15 +659,110 @@ function initSearchOptions() {
   });
 }
 
+function initTocWidth(panel) {
+  const handle = document.getElementById("toc-resizer");
+  const container = panel.parentElement;
+  if (!handle || !container) return () => {};
+  const storageKey = "w2r_toc_width";
+  const defaultWidth = 220;
+  const minWidth = 180;
+  const maxWidth = 480;
+  const mobile = window.matchMedia("(max-width: 768px)");
+  let preferredWidth = defaultWidth;
+  let drag = null;
+  try {
+    const stored = Number(localStorage.getItem(storageKey));
+    if (Number.isFinite(stored) && stored >= minWidth) {
+      preferredWidth = Math.min(maxWidth, stored);
+    }
+  } catch { /* */ }
+
+  const bounds = () => ({
+    min: minWidth,
+    max: Math.max(minWidth, Math.min(maxWidth, Math.floor(container.clientWidth - 320))),
+  });
+  const enabled = () => !mobile.matches && !panel.classList.contains("is-collapsed");
+  const persist = () => {
+    try { localStorage.setItem(storageKey, String(preferredWidth)); } catch { /* */ }
+  };
+  const stopDragging = () => {
+    if (!drag) return;
+    const pointerId = drag.pointerId;
+    drag = null;
+    document.documentElement.classList.remove("is-toc-resizing");
+    if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
+    persist();
+  };
+  const refresh = () => {
+    const { min, max } = bounds();
+    const width = Math.round(Math.max(min, Math.min(max, preferredWidth)));
+    panel.style.setProperty("--toc-width", `${width}px`);
+    handle.setAttribute("aria-valuemin", String(min));
+    handle.setAttribute("aria-valuemax", String(max));
+    handle.setAttribute("aria-valuenow", String(width));
+    handle.setAttribute("aria-valuetext", `${width} 像素`);
+    handle.tabIndex = enabled() ? 0 : -1;
+    if (!enabled() || panel.hidden) stopDragging();
+  };
+  const setWidth = (width) => {
+    const { min, max } = bounds();
+    preferredWidth = Math.round(Math.max(min, Math.min(max, width)));
+    refresh();
+  };
+
+  handle.addEventListener("pointerdown", (event) => {
+    if (!enabled() || event.button !== 0 || !event.isPrimary || drag) return;
+    event.preventDefault();
+    drag = { pointerId: event.pointerId, x: event.clientX, width: panel.getBoundingClientRect().width };
+    handle.setPointerCapture(event.pointerId);
+    document.documentElement.classList.add("is-toc-resizing");
+    handle.focus({ preventScroll: true });
+  });
+  handle.addEventListener("pointermove", (event) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    setWidth(drag.width + drag.x - event.clientX);
+  });
+  for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
+    handle.addEventListener(type, (event) => {
+      if (drag && event.pointerId === drag.pointerId) stopDragging();
+    });
+  }
+  handle.addEventListener("keydown", (event) => {
+    if (!enabled()) return;
+    const { min, max } = bounds();
+    const width = panel.getBoundingClientRect().width;
+    const step = event.shiftKey ? 64 : 16;
+    const values = { ArrowLeft: width + step, ArrowRight: width - step, Home: min, End: max };
+    if (!(event.key in values)) return;
+    event.preventDefault();
+    setWidth(values[event.key]);
+    persist();
+  });
+  handle.addEventListener("dblclick", () => {
+    if (!enabled()) return;
+    preferredWidth = defaultWidth;
+    refresh();
+    persist();
+  });
+  window.addEventListener("blur", stopDragging);
+  mobile.addEventListener("change", refresh);
+  new ResizeObserver(refresh).observe(container);
+  new MutationObserver(refresh).observe(panel, { attributes: true, attributeFilter: ["hidden"] });
+  refresh();
+  return refresh;
+}
+
 function initTocPanel() {
   const panel = document.getElementById("toc-panel");
   const btn = document.getElementById("btn-toc-toggle");
   if (!panel || !btn) return;
+  const refreshWidth = initTocWidth(panel);
 
   const apply = (collapsed) => {
     panel.classList.toggle("is-collapsed", collapsed);
     btn.setAttribute("aria-expanded", String(!collapsed));
     btn.setAttribute("aria-label", collapsed ? "展开目录" : "折叠目录");
+    refreshWidth();
   };
 
   const pref = readPref(TOC_PANEL_KEY);
@@ -767,7 +955,6 @@ function renderList() {
     let prevHitName = null;
     hits.forEach((h, i) => {
       const li = document.createElement("li");
-      li.setAttribute("role", "option");
       const btn = document.createElement("button");
       btn.type = "button";
       const continueSameNote = prevHitName === h.name;
@@ -806,24 +993,7 @@ function renderList() {
   }
 
   $("filter-empty").hidden = true;
-  allNames.forEach((name, i) => {
-    const li = document.createElement("li");
-    li.setAttribute("role", "option");
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.dataset.name = name;
-    btn.dataset.index = String(i);
-    if (selected === name) { btn.setAttribute("aria-current", "true"); btn.classList.add("active"); }
-
-    const main = document.createElement("span");
-    main.className = "note-title-main";
-    main.textContent = displayTitle(name);
-    btn.appendChild(main);
-
-    btn.addEventListener("click", () => openNote(name));
-    li.appendChild(btn);
-    ul.appendChild(li);
-  });
+  renderNoteGroups(ul);
 }
 
 function setPreviewLoading(loading) {
@@ -949,6 +1119,7 @@ function goToMatch(index, scrollEl) {
   const cRect = scrollEl.getBoundingClientRect();
   const eRect = el.getBoundingClientRect();
   const target = eRect.top - cRect.top + scrollEl.scrollTop - scrollEl.clientHeight / 3;
+  readingPosition?.navigate();
   scrollEl.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
 }
 
@@ -988,6 +1159,7 @@ async function openNote(name, { searchQuery, matchIndex, preserveHash = false } 
   scrollEl.scrollTop = 0;
   const preview = $("note-preview");
   preview.innerHTML = "";
+  readingPosition?.reset();
   clearToc();
   setPreviewLoading(true);
   updateReadingMeta(null);
@@ -1024,6 +1196,7 @@ async function openNote(name, { searchQuery, matchIndex, preserveHash = false } 
     enhancePreviewLinks(preview);
     addCopyButtons(preview);
     buildToc(preview, scrollEl);
+    readingPosition?.reset();
 
     if (searchQuery) {
       highlightAllMatches(preview, scrollEl, searchQuery, matchIndex ?? 0);
@@ -1057,6 +1230,7 @@ function clearSelectionUi() {
   $("preview-title").textContent = "未选择";
   setTitlePlaceholder(true);
   renderHomeState();
+  readingPosition?.reset();
   clearToc();
   $("btn-scroll-top").hidden = true;
   updateReadingMeta(null);
@@ -1110,7 +1284,8 @@ function updateSearchClearBtn() {
 function getSearchNavTargets() {
   const q = filterQuery.trim();
   if (!q) {
-    return [...document.querySelectorAll(".notes-list button[data-name]:not(.search-hit)")];
+    return [...document.querySelectorAll(".notes-list button[data-name]:not(.search-hit)")]
+      .filter((button) => !button.closest(".note-group") || button.closest(".note-group").open);
   }
   const hits = [...document.querySelectorAll(".notes-list button.search-hit")];
   if (hits.length) return hits;
@@ -1156,7 +1331,10 @@ function setupFab() {
     fab.hidden = !show;
   };
   scrollEl.addEventListener("scroll", check, { passive: true });
-  fab.addEventListener("click", () => scrollEl.scrollTo({ top: 0, behavior: "smooth" }));
+  fab.addEventListener("click", () => {
+    readingPosition?.navigate();
+    scrollEl.scrollTo({ top: 0, behavior: "smooth" });
+  });
 }
 
 function restoreLastNote() {
@@ -1182,6 +1360,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initSidebar();
   initTocPanel();
   initSearchOptions();
+  initNoteGrouping();
   configureMarked();
 
   const search = $("input-search");
@@ -1214,6 +1393,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-refresh").addEventListener("click", refresh);
 
   $("btn-scroll-top").addEventListener("click", () => {
+    readingPosition?.navigate();
     $("note-preview-scroll").scrollTo({ top: 0, behavior: "smooth" });
     $("note-preview").focus({ preventScroll: true });
   });
@@ -1260,5 +1440,6 @@ document.addEventListener("DOMContentLoaded", () => {
       .catch(() => showToast("复制链接失败"));
   });
   setupFab();
+  readingPosition = Watch2ReadPosition.trackReadingPosition($("note-preview-scroll"), $("note-preview"));
   refresh().then(restoreNoteFromUrlOrLast);
 });

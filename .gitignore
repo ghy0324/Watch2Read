@@ -12,3 +12,4 @@ notes/*.srt
 notes/*.json
 notes/.watch2read/
 .venv/
+node_modules/
