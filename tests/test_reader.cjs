@@ -1,5 +1,6 @@
 const { test, before, after, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
+const { createHash } = require("node:crypto");
 const { createServer } = require("node:http");
 const fs = require("node:fs/promises");
 const path = require("node:path");
@@ -124,6 +125,24 @@ test("explicit navigation is not undone by an ongoing sidebar reflow", async () 
   await page.click("#btn-scroll-top");
   await page.waitForTimeout(1200);
   assert.equal(await page.locator("#note-preview-scroll").evaluate((el) => el.scrollTop), 0);
+});
+
+test("reader script URL changes with its content and bypasses the unversioned cache", async () => {
+  const source = await fs.readFile(path.join(root, "app.js"));
+  const version = createHash("sha256").update(source).digest("hex").slice(0, 12);
+  const script = await page.locator('script[src^="./app.js"]').getAttribute("src");
+  assert.equal(script, `./app.js?v=${version}`, "Update the app.js version in index.html when its content changes");
+
+  let legacyRequests = 0;
+  await page.route("**/app.js", async (route) => {
+    legacyRequests++;
+    await route.fulfill({ body: "/* stale unversioned reader */", contentType: "text/javascript" });
+  });
+  await page.goto(base + "/?note=" + encodeURIComponent("对Dyna创始人Lindon Gao的3小时访谈.md"));
+  await page.waitForSelector("#toc-list .toc-group-text");
+  assert.equal(legacyRequests, 0);
+  const labels = await page.locator("#toc-list .toc-group-text").allTextContents();
+  assert.ok(labels.every((text) => !/展开本节|折叠本节/.test(text)));
 });
 
 test("TOC labels exclude section controls without stripping actual title text", async () => {
